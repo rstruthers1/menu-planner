@@ -3,6 +3,7 @@ package com.menuplanner.controller;
 import com.menuplanner.util.TemperatureConverter;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,10 +15,14 @@ import java.util.Map;
 @RestController
 public class WeatherController {
 
+    @Value("${weather.latitude}")
+    private double latitude;
+
+    @Value("${weather.longitude}")
+    private double longitude;
+
     @GetMapping("/api/weather")
     public Map<String, Object> getWeather(@RequestParam String date) {
-        String latitude = "44.9916";
-        String longitude = "-93.4053";
 
         // Forecast API carries 92 days of history; archive API for anything older
         LocalDate requestedDate = LocalDate.parse(date);
@@ -26,7 +31,7 @@ public class WeatherController {
                 : "https://api.open-meteo.com/v1/forecast";
 
         String url = String.format(
-                "%s?latitude=%s&longitude=%s&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=America/Chicago&start_date=%s&end_date=%s",
+                "%s?latitude=%f&longitude=%f&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=America/Chicago&start_date=%s&end_date=%s",
                 baseUrl, latitude, longitude, date, date
         );
 
