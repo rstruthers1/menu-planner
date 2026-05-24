@@ -1,4 +1,5 @@
 import DayRow from './DayRow';
+import WeekHelper from './WeekHelper';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -66,8 +67,22 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
         }
     };
 
+    const handleSuggestions = (suggestions) => {
+        Object.entries(suggestions).forEach(([dateStr, mealName]) => {
+            const day = days.find(d => d.dateStr === dateStr);
+            if (day) handleSave(dateStr, day.dayName, mealName, weather[dateStr]);
+        });
+    };
+
     return (
         <div>
+            <WeekHelper
+                weekStart={weekStart}
+                weather={weather}
+                entries={entries}
+                toDateStr={toDateStr}
+                onSuggestions={handleSuggestions}
+            />
             {days.map(({ date, dateStr, dayName }) => (
                 <DayRow
                     key={dateStr}
@@ -78,6 +93,29 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
                     weather={weather[dateStr]}
                     mealSuggestions={mealSuggestions}
                     onSave={handleSave}
+                    onAskAI={(dateStr, dayName, prompt) => {
+                        const existingMeals = {};
+                        entries.forEach(e => { if (e.mealName) existingMeals[e.mealDate] = e.mealName; });
+                        const weatherMap = {};
+                        if (weather[dateStr]) weatherMap[dateStr] = weather[dateStr];
+                        fetch('/api/suggest-meals', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                weekStart: toDateStr(weekStart),
+                                prompt,
+                                weather: weatherMap,
+                                existingMeals,
+                                targetDate: dateStr,
+                            }),
+                        })
+                            .then(r => r.json())
+                            .then(suggestions => {
+                                const meal = suggestions[dateStr];
+                                if (meal) handleSave(dateStr, dayName, meal, weather[dateStr]);
+                            })
+                            .catch(console.error);
+                    }}
                 />
             ))}
         </div>

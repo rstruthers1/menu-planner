@@ -2,9 +2,12 @@ weather:
   latitude: 44.9916
   longitude: -93.4053
 
+anthropic:
+  api-key: ${ANTHROPIC_API_KEY:}
+
 spring:
   datasource:
-    url: jdbc:h2:mem:menu_planner;DB_CLOSE_DELAY=-1
+    url: jdbc:h2:file:./data/menu_planner;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver
     username: sa
     password: 

@@ -24,6 +24,8 @@ public class MenuEntryExcelLoader {
     }
 
     public void loadFromExcel() {
+        if (repository.count() > 0) return; // already seeded — don't add duplicates
+
         try (InputStream is = new ClassPathResource("data/menu_seed.xlsx").getInputStream();
              Workbook workbook = new XSSFWorkbook(is)) {
 
