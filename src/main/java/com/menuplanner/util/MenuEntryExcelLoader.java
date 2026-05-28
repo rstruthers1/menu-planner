@@ -1,8 +1,12 @@
 
 package com.menuplanner.util;
 
+import com.menuplanner.domain.Meal;
 import com.menuplanner.domain.MenuEntry;
+import com.menuplanner.domain.WeatherRecord;
+import com.menuplanner.repository.MealRepository;
 import com.menuplanner.repository.MenuEntryRepository;
+import com.menuplanner.repository.WeatherRecordRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.core.io.ClassPathResource;
@@ -18,13 +22,19 @@ import java.util.Iterator;
 public class MenuEntryExcelLoader {
 
     private final MenuEntryRepository repository;
+    private final MealRepository mealRepository;
+    private final WeatherRecordRepository weatherRecordRepository;
 
-    public MenuEntryExcelLoader(MenuEntryRepository repository) {
+    public MenuEntryExcelLoader(MenuEntryRepository repository,
+                                MealRepository mealRepository,
+                                WeatherRecordRepository weatherRecordRepository) {
         this.repository = repository;
+        this.mealRepository = mealRepository;
+        this.weatherRecordRepository = weatherRecordRepository;
     }
 
     public void loadFromExcel() {
-        if (repository.count() > 0) return; // already seeded — don't add duplicates
+        if (repository.count() > 0) return;
 
         try (InputStream is = new ClassPathResource("data/menu_seed.xlsx").getInputStream();
              Workbook workbook = new XSSFWorkbook(is)) {
@@ -32,28 +42,50 @@ public class MenuEntryExcelLoader {
             Sheet sheet = workbook.getSheetAt(0);
             Iterator<Row> rows = sheet.iterator();
 
-            // Skip header
-            if (rows.hasNext()) rows.next();
+            if (rows.hasNext()) rows.next(); // skip header
 
             while (rows.hasNext()) {
                 Row row = rows.next();
 
-                // Ensure the row has enough cells to avoid IndexOutOfBoundsException
-                if (row.getPhysicalNumberOfCells() < 6) {
+                if (row.getPhysicalNumberOfCells() < 3) {
                     System.err.println("Skipping row with insufficient data: " + row.getRowNum());
                     continue;
                 }
-                MenuEntry entry = new MenuEntry();
-                entry.setMealDate(getCellValueAsDate(row, 0));
-                entry.setDayOfWeek(getCellValue(row, 1));
-                entry.setMealName(getCellValue(row, 2));
-                entry.setWeather(getCellValue(row, 3));
-                entry.setHighTempF(getCellValueAsInteger(row, 4));
-                entry.setLowTempF(getCellValueAsInteger(row, 5));
-                entry.setRecipeLink(getCellValue(row, 6));
-                entry.setNotes(getCellValue(row, 7));
 
+                LocalDate mealDate = getCellValueAsDate(row, 0);
+                String mealName = getCellValue(row, 2);
+                String recipeLink = getCellValue(row, 6);
+                String notes = getCellValue(row, 7);
+
+                Meal meal = mealRepository.findByName(mealName).orElseGet(() -> {
+                    Meal m = new Meal();
+                    m.setName(mealName);
+                    m.setRecipeLink(recipeLink.isEmpty() ? null : recipeLink);
+                    m.setNotes(notes.isEmpty() ? null : notes);
+                    return mealRepository.save(m);
+                });
+
+                MenuEntry entry = new MenuEntry();
+                entry.setMealDate(mealDate);
+                entry.setDayOfWeek(getCellValue(row, 1));
+                entry.setMeal(meal);
                 repository.save(entry);
+
+                // Seed historical weather separately
+                if (mealDate != null && row.getPhysicalNumberOfCells() >= 6) {
+                    String condition = getCellValue(row, 3);
+                    Integer high = getCellValueAsInteger(row, 4);
+                    Integer low = getCellValueAsInteger(row, 5);
+                    boolean hasWeather = (condition != null && !condition.isEmpty()) || high != null || low != null;
+                    if (hasWeather && weatherRecordRepository.findByDate(mealDate).isEmpty()) {
+                        WeatherRecord wr = new WeatherRecord();
+                        wr.setDate(mealDate);
+                        wr.setCondition(condition);
+                        wr.setHighTempF(high);
+                        wr.setLowTempF(low);
+                        weatherRecordRepository.save(wr);
+                    }
+                }
             }
 
         } catch (Exception e) {
@@ -72,14 +104,11 @@ public class MenuEntryExcelLoader {
 
         switch (cell.getCellType()) {
             case NUMERIC:
-                return (int) cell.getNumericCellValue(); // safely cast to int
+                return (int) cell.getNumericCellValue();
             case STRING:
                 String text = cell.getStringCellValue().trim();
-                if (text.contains(".")) {
-                    return (int) Double.parseDouble(text);  // safely handle "83.0"
-                } else {
-                    return Integer.parseInt(text);
-                }
+                if (text.isEmpty()) return null;
+                return text.contains(".") ? (int) Double.parseDouble(text) : Integer.parseInt(text);
             default:
                 return null;
         }
@@ -94,7 +123,6 @@ public class MenuEntryExcelLoader {
         } else {
             String text = cell.toString().trim();
             try {
-                // Try parsing format like "02-Jul-2025"
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy");
                 return LocalDate.parse(text, formatter);
             } catch (DateTimeParseException e) {

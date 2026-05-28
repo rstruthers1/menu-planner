@@ -7,15 +7,11 @@ anthropic:
 
 spring:
   datasource:
-    url: jdbc:h2:file:./data/menu_planner;DB_CLOSE_DELAY=-1
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: 
+    url: jdbc:postgresql://localhost:5432/menu_planner
+    username: menu_user
+    password: menu_pass
   jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: update
     show-sql: true
-  h2:
-    console:
-      enabled: true

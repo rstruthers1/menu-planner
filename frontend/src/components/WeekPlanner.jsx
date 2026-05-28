@@ -1,9 +1,15 @@
+import { useState } from 'react';
+import AiChatModal from './AiChatModal';
 import DayRow from './DayRow';
+import MealDetailModal from './MealDetailModal';
 import WeekHelper from './WeekHelper';
 
-const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions, setMealSuggestions, toDateStr }) {
+    const [detailDay, setDetailDay] = useState(null);
+    const [aiChatDay, setAiChatDay] = useState(null);
+
     const days = Array.from({ length: 7 }, (_, i) => {
         const d = new Date(weekStart);
         d.setDate(d.getDate() + i);
@@ -13,7 +19,7 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
     const entriesByDate = {};
     entries.forEach(e => { entriesByDate[e.mealDate] = e; });
 
-    const handleSave = (dateStr, dayName, mealName, weatherData) => {
+    const handleSave = (dateStr, dayName, mealName) => {
         const existing = entriesByDate[dateStr];
 
         if (!mealName.trim()) {
@@ -29,9 +35,9 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
             mealDate: dateStr,
             dayOfWeek: dayName,
             mealName: mealName.trim(),
-            weather: weatherData?.condition || '',
-            highTempF: weatherData?.high ?? null,
-            lowTempF: weatherData?.low ?? null,
+            confirmed: existing?.confirmed ?? false,
+            leftover: existing?.leftover ?? false,
+            leftoverFromDate: existing?.leftoverFromDate ?? null,
         };
 
         const addSuggestion = (name) => {
@@ -67,14 +73,26 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
         }
     };
 
+    const handleToggleConfirmed = (entry) => {
+        fetch(`/api/menus/${entry.id}/confirmed`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ confirmed: !entry.confirmed }),
+        })
+            .then(r => r.json())
+            .then(updated => setEntries(prev => prev.map(e => e.id === updated.id ? updated : e)))
+            .catch(console.error);
+    };
+
     const handleSuggestions = (suggestions) => {
         Object.entries(suggestions).forEach(([dateStr, mealName]) => {
             const day = days.find(d => d.dateStr === dateStr);
-            if (day) handleSave(dateStr, day.dayName, mealName, weather[dateStr]);
+            if (day) handleSave(dateStr, day.dayName, mealName);
         });
     };
 
     return (
+        <>
         <div>
             <WeekHelper
                 weekStart={weekStart}
@@ -93,32 +111,56 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
                     weather={weather[dateStr]}
                     mealSuggestions={mealSuggestions}
                     onSave={handleSave}
-                    onAskAI={(dateStr, dayName, prompt) => {
+                    onToggleConfirmed={handleToggleConfirmed}
+                    onOpenDetail={(mode) => setDetailDay({ dateStr, dayName, entry: entriesByDate[dateStr], mode })}
+                    onOpenAiChat={() => {
                         const existingMeals = {};
                         entries.forEach(e => { if (e.mealName) existingMeals[e.mealDate] = e.mealName; });
-                        const weatherMap = {};
-                        if (weather[dateStr]) weatherMap[dateStr] = weather[dateStr];
-                        fetch('/api/suggest-meals', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                weekStart: toDateStr(weekStart),
-                                prompt,
-                                weather: weatherMap,
-                                existingMeals,
-                                targetDate: dateStr,
-                            }),
-                        })
-                            .then(r => r.json())
-                            .then(suggestions => {
-                                const meal = suggestions[dateStr];
-                                if (meal) handleSave(dateStr, dayName, meal, weather[dateStr]);
-                            })
-                            .catch(console.error);
+                        setAiChatDay({ dateStr, dayName, weather: weather[dateStr], existingMeals });
                     }}
                 />
             ))}
         </div>
+        {aiChatDay && (
+            <AiChatModal
+                isOpen={!!aiChatDay}
+                onClose={() => setAiChatDay(null)}
+                dateStr={aiChatDay.dateStr}
+                dayName={aiChatDay.dayName}
+                weather={aiChatDay.weather}
+                existingMeals={aiChatDay.existingMeals}
+                mealLibrary={mealSuggestions}
+                weekStart={toDateStr(weekStart)}
+                onSelect={(mealName) => {
+                    handleSave(aiChatDay.dateStr, aiChatDay.dayName, mealName);
+                    if (!mealSuggestions.includes(mealName)) {
+                        setMealSuggestions(prev => [...prev, mealName].sort());
+                    }
+                }}
+            />
+        )}
+        {detailDay && (
+            <MealDetailModal
+                isOpen={!!detailDay}
+                onClose={() => setDetailDay(null)}
+                dateStr={detailDay.dateStr}
+                dayName={detailDay.dayName}
+                entry={detailDay.entry}
+                mode={detailDay.mode}
+                onSaved={(saved) => {
+                    setEntries(prev => {
+                        const exists = prev.find(e => e.id === saved.id);
+                        return exists
+                            ? prev.map(e => e.id === saved.id ? saved : e)
+                            : [...prev, saved];
+                    });
+                    if (saved.mealName && !mealSuggestions.includes(saved.mealName)) {
+                        setMealSuggestions(prev => [...prev, saved.mealName].sort());
+                    }
+                }}
+            />
+        )}
+        </>
     );
 }
 

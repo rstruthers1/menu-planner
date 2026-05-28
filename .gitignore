@@ -5,8 +5,13 @@ target/
 frontend/node_modules/
 frontend/dist/
 
-# H2 database files
-data/
-
 # Logs
 *.log
+
+# IDE
+.idea/
+*.iml
+
+# Local assistant memory and data
+.claude/
+data/

@@ -15,10 +15,11 @@ public class MenuEntry {
 
     private LocalDate mealDate;
     private String dayOfWeek;
-    private String mealName;
-    private String weather;
-    private Integer highTempF;
-    private Integer lowTempF;
-    private String recipeLink;
-    private String notes;
+    private Boolean confirmed;
+    private Boolean leftover;
+    private LocalDate leftoverFromDate;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "meal_id")
+    private Meal meal;
 }

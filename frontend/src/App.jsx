@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Box, Button, Heading, HStack, Text } from '@chakra-ui/react';
+import {
+    Box, Button, Heading, HStack, Tab, TabList, TabPanel, TabPanels, Tabs, Text,
+} from '@chakra-ui/react';
 import WeekPlanner from './components/WeekPlanner';
+import History from './components/History';
 
 function toDateStr(date) {
     const y = date.getFullYear();
@@ -9,16 +12,16 @@ function toDateStr(date) {
     return `${y}-${m}-${d}`;
 }
 
-function getMondayOfWeek(date) {
+function getSundayOfWeek(date) {
     const d = new Date(date);
-    const day = d.getDay();
-    d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+    d.setDate(d.getDate() - d.getDay());
     d.setHours(0, 0, 0, 0);
     return d;
 }
 
 function App() {
-    const [weekStart, setWeekStart] = useState(() => getMondayOfWeek(new Date()));
+    const [weekStart, setWeekStart] = useState(() => getSundayOfWeek(new Date()));
+    const [historyKey, setHistoryKey] = useState(0);
     const [entries, setEntries] = useState([]);
     const [mealSuggestions, setMealSuggestions] = useState([]);
     const [weather, setWeather] = useState({});
@@ -66,22 +69,35 @@ function App() {
     const weekLabel = weekStart.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
     return (
-        <Box maxW="560px" mx="auto" p={6}>
+        <Box maxW="640px" mx="auto" p={6}>
             <Heading as="h1" size="lg" mb={6}>Meal Planner</Heading>
-            <HStack justify="space-between" mb={4}>
-                <Button onClick={() => shiftWeek(-7)} size="sm" variant="outline">← Prev</Button>
-                <Text fontWeight="semibold" fontSize="sm">{weekLabel}</Text>
-                <Button onClick={() => shiftWeek(7)} size="sm" variant="outline">Next →</Button>
-            </HStack>
-            <WeekPlanner
-                weekStart={weekStart}
-                entries={entries}
-                setEntries={setEntries}
-                weather={weather}
-                mealSuggestions={mealSuggestions}
-                setMealSuggestions={setMealSuggestions}
-                toDateStr={toDateStr}
-            />
+            <Tabs onChange={(i) => { if (i === 1) setHistoryKey(k => k + 1); }}>
+                <TabList mb={4}>
+                    <Tab>Planner</Tab>
+                    <Tab>History</Tab>
+                </TabList>
+                <TabPanels>
+                    <TabPanel p={0}>
+                        <HStack justify="space-between" mb={4}>
+                            <Button onClick={() => shiftWeek(-7)} size="sm" variant="outline">← Prev</Button>
+                            <Text fontWeight="semibold" fontSize="sm">{weekLabel}</Text>
+                            <Button onClick={() => shiftWeek(7)} size="sm" variant="outline">Next →</Button>
+                        </HStack>
+                        <WeekPlanner
+                            weekStart={weekStart}
+                            entries={entries}
+                            setEntries={setEntries}
+                            weather={weather}
+                            mealSuggestions={mealSuggestions}
+                            setMealSuggestions={setMealSuggestions}
+                            toDateStr={toDateStr}
+                        />
+                    </TabPanel>
+                    <TabPanel p={0} pt={2}>
+                        <History key={historyKey} />
+                    </TabPanel>
+                </TabPanels>
+            </Tabs>
         </Box>
     );
 }

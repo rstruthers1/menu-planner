@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import {
     Box, Button, HStack, Input, Popover, PopoverBody, PopoverContent,
-    PopoverTrigger, Spinner, Text, VStack,
+    PopoverTrigger, Text, VStack,
 } from '@chakra-ui/react';
 
 function weatherIcon(condition) {
@@ -25,15 +25,11 @@ function toLocalDateStr() {
     return `${y}-${m}-${day}`;
 }
 
-function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, onSave, onAskAI }) {
+function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, onSave, onOpenAiChat, onOpenDetail, onToggleConfirmed }) {
     const [mealName, setMealName] = useState(entry?.mealName || '');
     const [pickerOpen, setPickerOpen] = useState(false);
-    const [aiOpen, setAiOpen] = useState(false);
-    const [aiPrompt, setAiPrompt] = useState('');
-    const [aiLoading, setAiLoading] = useState(false);
     const [search, setSearch] = useState('');
     const searchRef = useRef(null);
-    const aiInputRef = useRef(null);
     const listId = `suggestions-${dateStr}`;
     const isToday = dateStr === toLocalDateStr();
 
@@ -49,32 +45,13 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, onSav
         }
     }, [pickerOpen]);
 
-    useEffect(() => {
-        if (aiOpen && aiInputRef.current) {
-            setTimeout(() => aiInputRef.current?.focus(), 50);
-        } else {
-            setAiPrompt('');
-        }
-    }, [aiOpen]);
-
-    const handleBlur = () => onSave(dateStr, dayName, mealName, weather);
+    const handleBlur = () => onSave(dateStr, dayName, mealName);
     const handleKeyDown = (e) => { if (e.key === 'Enter') e.target.blur(); };
 
     const pickMeal = (name) => {
         setMealName(name);
         setPickerOpen(false);
-        onSave(dateStr, dayName, name, weather);
-    };
-
-    const handleAskAI = () => {
-        if (!aiPrompt.trim()) return;
-        setAiLoading(true);
-        onAskAI(dateStr, dayName, aiPrompt.trim());
-        // Close after a short delay — the save will update the entry
-        setTimeout(() => {
-            setAiLoading(false);
-            setAiOpen(false);
-        }, 3000);
+        onSave(dateStr, dayName, name);
     };
 
     const filtered = search.trim()
@@ -113,9 +90,32 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, onSav
                     placeholder="Add a meal…"
                     size="sm"
                     variant="flushed"
+                    fontStyle={entry && !entry.confirmed ? 'italic' : 'normal'}
+                    color={entry && !entry.confirmed ? 'gray.400' : undefined}
                     _placeholder={{ color: 'gray.300' }}
                 />
+                {entry?.leftover && (
+                    <Text fontSize="xs" color="orange.400" lineHeight="1.2" mt="1px">
+                        ↩ {entry.leftoverFromDate
+                            ? `leftovers from ${new Date(entry.leftoverFromDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`
+                            : 'leftovers'}
+                    </Text>
+                )}
             </Box>
+
+            {/* Confirmed toggle */}
+            <Button
+                size="xs"
+                variant="ghost"
+                colorScheme={entry?.confirmed ? 'green' : 'gray'}
+                onClick={() => entry && onToggleConfirmed(entry)}
+                isDisabled={!entry}
+                title={entry?.confirmed ? 'Confirmed — click to mark as idea' : 'Idea — click to confirm'}
+                px={1}
+                opacity={entry ? 1 : 0}
+            >
+                {entry?.confirmed ? '✓' : '○'}
+            </Button>
 
             {/* Browse meal history */}
             <Popover
@@ -129,7 +129,7 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, onSav
                         size="xs"
                         variant="ghost"
                         color="gray.400"
-                        onClick={() => { setAiOpen(false); setPickerOpen(p => !p); }}
+                        onClick={() => setPickerOpen(p => !p)}
                         title="Browse meal history"
                         px={1}
                     >
@@ -169,51 +169,48 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, onSav
                 </PopoverContent>
             </Popover>
 
-            {/* Ask AI for this day */}
-            <Popover
-                isOpen={aiOpen}
-                onClose={() => setAiOpen(false)}
-                placement="bottom-end"
-                isLazy
-            >
+            {/* Edit / Add New detail form */}
+            <Popover placement="bottom-end" isLazy>
                 <PopoverTrigger>
-                    <Button
-                        size="xs"
-                        variant="ghost"
-                        color="purple.300"
-                        onClick={() => { setPickerOpen(false); setAiOpen(p => !p); }}
-                        title={`Get a suggestion for ${dayName}`}
-                        px={1}
-                    >
-                        ✨
+                    <Button size="xs" variant="ghost" color="gray.400" title="Edit or add meal" px={1}>
+                        ⋯
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent w="230px" shadow="md">
-                    <PopoverBody p={3}>
-                        <Text fontSize="xs" color="gray.500" mb={2}>
-                            What do you want for {dayName}?
-                        </Text>
-                        <Input
-                            ref={aiInputRef}
-                            placeholder="e.g. something super easy"
-                            size="sm"
-                            mb={2}
-                            value={aiPrompt}
-                            onChange={e => setAiPrompt(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter') handleAskAI(); }}
-                        />
-                        <Button
-                            size="sm"
-                            colorScheme="purple"
-                            width="100%"
-                            onClick={handleAskAI}
-                            isDisabled={!aiPrompt.trim() || aiLoading}
-                        >
-                            {aiLoading ? <Spinner size="xs" /> : 'Suggest'}
-                        </Button>
+                <PopoverContent w="110px" shadow="md">
+                    <PopoverBody p={1}>
+                        <VStack align="stretch" spacing={0}>
+                            {entry && (
+                                <Box
+                                    px={2} py={1} fontSize="sm" cursor="pointer" borderRadius="sm"
+                                    _hover={{ bg: 'gray.100' }}
+                                    onMouseDown={() => onOpenDetail('edit')}
+                                >
+                                    Edit
+                                </Box>
+                            )}
+                            <Box
+                                px={2} py={1} fontSize="sm" cursor="pointer" borderRadius="sm"
+                                _hover={{ bg: 'gray.100' }}
+                                onMouseDown={() => onOpenDetail('add')}
+                            >
+                                Add New
+                            </Box>
+                        </VStack>
                     </PopoverBody>
                 </PopoverContent>
             </Popover>
+
+            {/* AI meal chat */}
+            <Button
+                size="xs"
+                variant="ghost"
+                color="purple.300"
+                onClick={() => { setPickerOpen(false); onOpenAiChat(); }}
+                title={`Get meal ideas for ${dayName}`}
+                px={1}
+            >
+                ✨
+            </Button>
 
             <Box minW="85px" textAlign="right">
                 {weather ? (

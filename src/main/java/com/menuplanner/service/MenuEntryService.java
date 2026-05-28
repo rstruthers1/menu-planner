@@ -1,6 +1,8 @@
 package com.menuplanner.service;
 
+import com.menuplanner.domain.Meal;
 import com.menuplanner.domain.MenuEntry;
+import com.menuplanner.repository.MealRepository;
 import com.menuplanner.repository.MenuEntryRepository;
 import org.springframework.stereotype.Service;
 
@@ -11,9 +13,11 @@ import java.util.List;
 public class MenuEntryService {
 
     private final MenuEntryRepository repository;
+    private final MealRepository mealRepository;
 
-    public MenuEntryService(MenuEntryRepository repository) {
+    public MenuEntryService(MenuEntryRepository repository, MealRepository mealRepository) {
         this.repository = repository;
+        this.mealRepository = mealRepository;
     }
 
     public List<MenuEntry> getAllMenus() {
@@ -30,13 +34,21 @@ public class MenuEntryService {
 
     public MenuEntry updateMenu(Long id, MenuEntry updated) {
         MenuEntry existing = repository.findById(id).orElseThrow();
-        existing.setMealName(updated.getMealName());
-        existing.setWeather(updated.getWeather());
-        existing.setHighTempF(updated.getHighTempF());
-        existing.setLowTempF(updated.getLowTempF());
-        existing.setRecipeLink(updated.getRecipeLink());
-        existing.setNotes(updated.getNotes());
+        existing.setMeal(updated.getMeal());
+        existing.setConfirmed(updated.getConfirmed());
+        existing.setLeftover(updated.getLeftover());
+        existing.setLeftoverFromDate(updated.getLeftoverFromDate());
         return repository.save(existing);
+    }
+
+    public MenuEntry setConfirmed(Long id, boolean confirmed) {
+        MenuEntry existing = repository.findById(id).orElseThrow();
+        existing.setConfirmed(confirmed);
+        return repository.save(existing);
+    }
+
+    public List<MenuEntry> getPastMeals() {
+        return repository.findByMealDateLessThanEqualOrderByMealDateDesc(LocalDate.now());
     }
 
     public void deleteMenu(Long id) {
@@ -44,6 +56,17 @@ public class MenuEntryService {
     }
 
     public List<String> getMealNames() {
-        return repository.findDistinctMealNames();
+        return mealRepository.findAllNamesOrdered();
+    }
+
+    public Meal findOrCreateMeal(String name, String recipeLink, String notes) {
+        if (name == null || name.isBlank()) return null;
+        return mealRepository.findByName(name.trim()).orElseGet(() -> {
+            Meal m = new Meal();
+            m.setName(name.trim());
+            m.setRecipeLink(recipeLink);
+            m.setNotes(notes);
+            return mealRepository.save(m);
+        });
     }
 }

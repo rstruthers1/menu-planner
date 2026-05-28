@@ -6,9 +6,12 @@ import com.anthropic.models.messages.ContentBlock;
 import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -94,6 +97,163 @@ public class MealSuggestionService {
                 .orElse("{}");
 
         return parseJsonToMap(content);
+    }
+
+    public Map<String, Object> chat(
+            String targetDate, String dayName,
+            Map<String, Object> weather,
+            Map<String, String> existingMeals,
+            List<String> mealLibrary,
+            List<Map<String, String>> messages,
+            List<Map<String, Object>> history) {
+
+        AnthropicClient client = AnthropicOkHttpClient.builder().apiKey(apiKey).build();
+
+        String systemPrompt = """
+                You are a helpful meal planning assistant. Suggest meals based on the user's actual history.
+
+                Always respond with ONLY valid JSON in this exact format:
+                {
+                  "message": "Brief 1-2 sentence intro or follow-up response",
+                  "suggestions": [
+                    {"name": "Exact Meal Name", "reason": "Specific reason referencing their history or weather"}
+                  ]
+                }
+
+                Rules:
+                - Choose meal names exactly as they appear in the provided meal library
+                - Provide 3-5 suggestions unless the user asks for more or fewer
+                - Write reasons that reference real patterns: "You've had this on Mondays before",
+                  "You often have this when it's around 80°F", "A go-to for warm cloudy days", etc.
+                - Day-of-week history is a soft consideration — suggest good meals from the full library,
+                  not just meals tied to that day
+                - If suggestions would repeat meals already planned this week, skip them
+                - If the message is purely conversational with no meal request, set suggestions to []
+                """;
+
+        StringBuilder ctx = new StringBuilder();
+        ctx.append("Planning a meal for ").append(dayName).append(", ").append(targetDate).append(".\n\n");
+
+        if (weather != null) {
+            ctx.append("Today's weather: ").append(weather.get("condition"))
+               .append(", ").append(weather.get("high")).append("°F high / ")
+               .append(weather.get("low")).append("°F low\n\n");
+        }
+
+        if (history != null && !history.isEmpty()) {
+            // Day-of-week patterns (soft signal only — don't limit suggestions to these)
+            Map<String, Long> dayFreq = new LinkedHashMap<>();
+            history.stream()
+                    .filter(e -> dayName.equalsIgnoreCase((String) e.get("dayOfWeek")))
+                    .map(e -> (String) e.get("mealName"))
+                    .filter(m -> m != null && !m.isEmpty())
+                    .forEach(m -> dayFreq.merge(m, 1L, Long::sum));
+
+            List<Map.Entry<String, Long>> topDay = dayFreq.entrySet().stream()
+                    .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                    .limit(6)
+                    .collect(java.util.stream.Collectors.toList());
+
+            if (!topDay.isEmpty()) {
+                ctx.append("Meals you've had on ").append(dayName).append("s before (for context only):\n");
+                topDay.forEach(e -> ctx.append("- ").append(e.getKey())
+                        .append(" (").append(e.getValue()).append("x)\n"));
+                ctx.append("\n");
+            }
+
+            // Weather similarity: within 15°F of today's high
+            if (weather != null && weather.get("high") != null) {
+                int currentHigh = ((Number) weather.get("high")).intValue();
+                List<String> weatherMeals = history.stream()
+                        .filter(e -> e.get("highTempF") != null)
+                        .filter(e -> Math.abs(((Number) e.get("highTempF")).intValue() - currentHigh) <= 15)
+                        .map(e -> (String) e.get("mealName"))
+                        .filter(m -> m != null && !m.isEmpty())
+                        .distinct()
+                        .limit(8)
+                        .collect(java.util.stream.Collectors.toList());
+
+                if (!weatherMeals.isEmpty()) {
+                    ctx.append("Meals you've had in similar weather (~").append(currentHigh).append("°F):\n");
+                    weatherMeals.forEach(m -> ctx.append("- ").append(m).append("\n"));
+                    ctx.append("\n");
+                }
+            }
+        }
+
+        if (existingMeals != null && !existingMeals.isEmpty()) {
+            ctx.append("Already planned this week (do not repeat):\n");
+            existingMeals.forEach((d, m) -> ctx.append(d).append(": ").append(m).append("\n"));
+            ctx.append("\n");
+        }
+
+        ctx.append("Full meal library:\n");
+        mealLibrary.forEach(m -> ctx.append("- ").append(m).append("\n"));
+        ctx.append("\n---\n");
+
+        MessageCreateParams.Builder builder = MessageCreateParams.builder()
+                .model(Model.CLAUDE_HAIKU_4_5_20251001)
+                .maxTokens(1024)
+                .system(systemPrompt);
+
+        for (int i = 0; i < messages.size(); i++) {
+            Map<String, String> msg = messages.get(i);
+            String role = msg.get("role");
+            String content = msg.get("content");
+            if ("user".equals(role)) {
+                builder.addUserMessage(i == 0 ? ctx + content : content);
+            } else if ("assistant".equals(role)) {
+                builder.addAssistantMessage(content);
+            }
+        }
+
+        Message response = client.messages().create(builder.build());
+        String raw = response.content().stream()
+                .filter(ContentBlock::isText)
+                .map(b -> b.asText().text())
+                .findFirst()
+                .orElse("{\"message\":\"I couldn't generate suggestions.\",\"suggestions\":[]}");
+
+        Map<String, Object> result = parseChatResponse(raw);
+
+        // Remove suggestions already planned this week
+        if (existingMeals != null && !existingMeals.isEmpty()) {
+            java.util.Set<String> planned = new java.util.HashSet<>(existingMeals.values());
+            @SuppressWarnings("unchecked")
+            List<Map<String, String>> suggestions = (List<Map<String, String>>) result.get("suggestions");
+            if (suggestions != null) {
+                suggestions.removeIf(s -> planned.contains(s.get("name")));
+            }
+        }
+
+        return result;
+    }
+
+    private Map<String, Object> parseChatResponse(String raw) {
+        try {
+            String cleaned = raw.trim();
+            if (cleaned.startsWith("```")) {
+                cleaned = cleaned.replaceAll("^```[a-z]*\\n?", "").replaceAll("```$", "").trim();
+            }
+            JSONObject obj = new JSONObject(cleaned);
+            List<Map<String, String>> suggestions = new ArrayList<>();
+            JSONArray arr = obj.optJSONArray("suggestions");
+            if (arr != null) {
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject s = arr.getJSONObject(i);
+                    Map<String, String> item = new LinkedHashMap<>();
+                    item.put("name", s.optString("name", ""));
+                    item.put("reason", s.optString("reason", ""));
+                    suggestions.add(item);
+                }
+            }
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("message", obj.optString("message", ""));
+            result.put("suggestions", suggestions);
+            return result;
+        } catch (Exception e) {
+            return Map.of("message", raw, "suggestions", List.of());
+        }
     }
 
     private Map<String, String> parseJsonToMap(String json) {
