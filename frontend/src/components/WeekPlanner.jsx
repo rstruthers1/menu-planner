@@ -49,6 +49,8 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
             return;
         }
 
+        const libraryMeal = mealLibrary.find(m => m.name === mealName.trim());
+
         const body = {
             mealDate: dateStr,
             dayOfWeek: dayName,
@@ -56,6 +58,11 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
             confirmed: existing?.confirmed ?? false,
             leftover: existing?.leftover ?? false,
             leftoverFromDate: existing?.leftoverFromDate ?? null,
+            recipeLink: libraryMeal?.recipeLink ?? null,
+            notes: libraryMeal?.notes ?? null,
+            minTemp: libraryMeal?.minTemp ?? null,
+            maxTemp: libraryMeal?.maxTemp ?? null,
+            seasons: libraryMeal?.seasons ?? [],
         };
 
         const addSuggestion = (updated) => {
@@ -63,6 +70,8 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
                 setMealLibrary(prev => [...prev, {
                     id: updated.mealId,
                     name: updated.mealName,
+                    recipeLink: updated.recipeLink ?? null,
+                    notes: updated.notes ?? null,
                     minTemp: updated.minTemp ?? null,
                     maxTemp: updated.maxTemp ?? null,
                     seasons: updated.seasons || [],
@@ -292,7 +301,7 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
             onClose={onAddMealClose}
             onAdded={(saved) => {
                 if (saved.name && !mealLibrary.some(m => m.name === saved.name)) {
-                    setMealLibrary(prev => [...prev, { id: saved.id, name: saved.name, minTemp: saved.minTemp ?? null, maxTemp: saved.maxTemp ?? null, seasons: saved.seasons || [] }]
+                    setMealLibrary(prev => [...prev, { id: saved.id, name: saved.name, recipeLink: saved.recipeLink ?? null, notes: saved.notes ?? null, minTemp: saved.minTemp ?? null, maxTemp: saved.maxTemp ?? null, seasons: saved.seasons || [] }]
                         .sort((a, b) => a.name.localeCompare(b.name)));
                 }
             }}
@@ -342,11 +351,11 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
                             : [...prev, saved];
                     });
                     if (saved.mealName && !mealLibrary.some(m => m.name === saved.mealName)) {
-                        setMealLibrary(prev => [...prev, { id: saved.mealId, name: saved.mealName, minTemp: saved.minTemp ?? null, maxTemp: saved.maxTemp ?? null, seasons: saved.seasons || [] }]
+                        setMealLibrary(prev => [...prev, { id: saved.mealId, name: saved.mealName, recipeLink: saved.recipeLink ?? null, notes: saved.notes ?? null, minTemp: saved.minTemp ?? null, maxTemp: saved.maxTemp ?? null, seasons: saved.seasons || [] }]
                             .sort((a, b) => a.name.localeCompare(b.name)));
                     } else if (saved.mealName) {
                         setMealLibrary(prev => prev.map(m => m.name === saved.mealName
-                            ? { ...m, minTemp: saved.minTemp ?? null, maxTemp: saved.maxTemp ?? null, seasons: saved.seasons || [] }
+                            ? { ...m, recipeLink: saved.recipeLink ?? null, notes: saved.notes ?? null, minTemp: saved.minTemp ?? null, maxTemp: saved.maxTemp ?? null, seasons: saved.seasons || [] }
                             : m));
                     }
                 }}

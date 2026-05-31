@@ -29,6 +29,8 @@ public class MealController {
                     Map<String, Object> resp = new LinkedHashMap<>();
                     resp.put("id", m.getId());
                     resp.put("name", m.getName());
+                    resp.put("recipeLink", m.getRecipeLink());
+                    resp.put("notes", m.getNotes());
                     resp.put("minTemp", m.getMinTemp());
                     resp.put("maxTemp", m.getMaxTemp());
                     resp.put("seasons", m.getSeasons() != null
