@@ -45,7 +45,9 @@ public class MenuEntryController {
     @PostMapping
     public Map<String, Object> addMenu(@RequestBody MenuEntryRequest req,
                                        @AuthenticationPrincipal AppUserDetails userDetails) {
-        Meal meal = service.findOrCreateMeal(req.mealName(), req.recipeLink(), req.notes());
+        Household household = userDetails.getHousehold();
+        boolean shared = Boolean.TRUE.equals(req.shared());
+        Meal meal = service.findOrCreateMeal(req.mealName(), req.recipeLink(), req.notes(), shared, household);
         MenuEntry entry = new MenuEntry();
         entry.setMealDate(req.mealDate() != null ? LocalDate.parse(req.mealDate()) : null);
         entry.setDayOfWeek(req.dayOfWeek());
@@ -54,14 +56,16 @@ public class MenuEntryController {
         entry.setLeftoverFromDate(req.leftoverFromDate() != null && !req.leftoverFromDate().isBlank()
                 ? LocalDate.parse(req.leftoverFromDate()) : null);
         entry.setMeal(meal);
-        entry.setHousehold(userDetails.getHousehold());
+        entry.setHousehold(household);
         return toResponse(service.saveMenu(entry));
     }
 
     @PutMapping("/{id}")
     public Map<String, Object> updateMenu(@PathVariable Long id, @RequestBody MenuEntryRequest req,
                                           @AuthenticationPrincipal AppUserDetails userDetails) {
-        Meal meal = service.findOrCreateMeal(req.mealName(), req.recipeLink(), req.notes());
+        Household household = userDetails.getHousehold();
+        boolean shared = Boolean.TRUE.equals(req.shared());
+        Meal meal = service.findOrCreateMeal(req.mealName(), req.recipeLink(), req.notes(), shared, household);
         MenuEntry updated = new MenuEntry();
         updated.setMeal(meal);
         updated.setConfirmed(req.confirmed());
@@ -92,6 +96,7 @@ public class MenuEntryController {
         m.put("recipeLink", meal != null ? meal.getRecipeLink() : null);
         m.put("notes", meal != null ? meal.getNotes() : null);
         m.put("mealId", meal != null ? meal.getId() : null);
+        m.put("shared", meal != null && meal.isShared());
         m.put("leftover", entry.getLeftover());
         m.put("leftoverFromDate", entry.getLeftoverFromDate() != null ? entry.getLeftoverFromDate().toString() : null);
         return m;
@@ -100,6 +105,6 @@ public class MenuEntryController {
     record MenuEntryRequest(
             String mealDate, String dayOfWeek, String mealName,
             String recipeLink, String notes, Boolean confirmed,
-            Boolean leftover, String leftoverFromDate
+            Boolean leftover, String leftoverFromDate, Boolean shared
     ) {}
 }

@@ -57,17 +57,36 @@ public class MenuEntryService {
     }
 
     public List<String> getMealNames(Household household) {
-        return repository.findDistinctMealNamesByHousehold(household);
+        return mealRepository.findNamesForHousehold(household);
     }
 
-    public Meal findOrCreateMeal(String name, String recipeLink, String notes) {
+    public Meal findOrCreateMeal(String name, String recipeLink, String notes, boolean shared, Household household) {
         if (name == null || name.isBlank()) return null;
-        return mealRepository.findByName(name.trim()).orElseGet(() -> {
-            Meal m = new Meal();
-            m.setName(name.trim());
+        String trimmed = name.trim();
+
+        // Existing meal in this household — update and return
+        var householdMeal = mealRepository.findByNameAndHousehold(trimmed, household);
+        if (householdMeal.isPresent()) {
+            Meal m = householdMeal.get();
             m.setRecipeLink(recipeLink);
             m.setNotes(notes);
+            m.setShared(shared);
             return mealRepository.save(m);
-        });
+        }
+
+        // Shared meal with same name — use it if we're not marking this one shared
+        var sharedMeal = mealRepository.findFirstByNameAndSharedTrue(trimmed);
+        if (sharedMeal.isPresent() && !shared) {
+            return sharedMeal.get();
+        }
+
+        // Create new meal belonging to this household
+        Meal m = new Meal();
+        m.setName(trimmed);
+        m.setRecipeLink(recipeLink);
+        m.setNotes(notes);
+        m.setHousehold(household);
+        m.setShared(shared);
+        return mealRepository.save(m);
     }
 }

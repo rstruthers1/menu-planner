@@ -10,15 +10,15 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 
 function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSaved }) {
     const [localDateStr, setLocalDateStr] = useState(dateStr || '');
-    const [form, setForm] = useState({ mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '' });
+    const [form, setForm] = useState({ mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false });
     const toast = useToast();
 
     useEffect(() => {
         if (!isOpen) return;
         setLocalDateStr(dateStr || '');
         setForm(mode === 'edit' && entry
-            ? { mealName: entry.mealName || '', recipeLink: entry.recipeLink || '', notes: entry.notes || '', confirmed: entry.confirmed ?? false, leftover: entry.leftover ?? false, leftoverFromDate: entry.leftoverFromDate || '' }
-            : { mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '' }
+            ? { mealName: entry.mealName || '', recipeLink: entry.recipeLink || '', notes: entry.notes || '', confirmed: entry.confirmed ?? false, leftover: entry.leftover ?? false, leftoverFromDate: entry.leftoverFromDate || '', shared: entry.shared ?? false }
+            : { mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false }
         );
     }, [isOpen, entry, mode, dateStr]);
 
@@ -40,6 +40,7 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
             confirmed: form.confirmed,
             leftover: form.leftover,
             leftoverFromDate: form.leftover ? (form.leftoverFromDate || null) : null,
+            shared: form.shared,
         };
         const url = mode === 'edit' ? `/api/menus/${entry.id}` : '/api/menus';
         const method = mode === 'edit' ? 'PUT' : 'POST';
@@ -118,6 +119,13 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
                                     />
                                 </FormControl>
                             </Collapse>
+                            <Checkbox
+                                isChecked={form.shared}
+                                onChange={e => setForm(f => ({ ...f, shared: e.target.checked }))}
+                                colorScheme="blue"
+                            >
+                                Share with all households
+                            </Checkbox>
                         </Stack>
                     </ModalBody>
                     <ModalFooter>
