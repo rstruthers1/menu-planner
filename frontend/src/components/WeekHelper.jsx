@@ -62,7 +62,7 @@ function WeekHelper({ weekStart, weather, entries, toDateStr, onSuggestions }) {
                 <Textarea
                     value={prompt}
                     onChange={e => setPrompt(e.target.value)}
-                    placeholder="e.g. Hot week, Tuesday needs to be really quick, Saturday is date night"
+                    placeholder={DEFAULT_PROMPT}
                     size="sm"
                     rows={2}
                     resize="none"
