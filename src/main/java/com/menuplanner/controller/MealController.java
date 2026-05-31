@@ -9,6 +9,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,6 +21,8 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/meals")
 public class MealController {
+
+    private static final Logger log = LoggerFactory.getLogger(MealController.class);
 
     private final MealRepository mealRepository;
     private final MenuEntryRepository menuEntryRepository;
@@ -81,13 +86,13 @@ public class MealController {
     @DeleteMapping("/{id}")
     public void deleteMeal(@PathVariable Long id,
                            @AuthenticationPrincipal AppUserDetails userDetails) {
-        System.out.println(">>> deleteMeal called: id=" + id + " userHouseholdId=" + userDetails.getHousehold().getId());
+        log.debug("deleteMeal called: id={} userHouseholdId={}", id, userDetails.getHousehold().getId());
         Meal meal = mealRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         Long mealHouseholdId = meal.getHousehold() != null ? meal.getHousehold().getId() : null;
-        System.out.println(">>> meal householdId=" + mealHouseholdId + " shared=" + meal.isShared());
+        log.debug("meal householdId={} shared={}", mealHouseholdId, meal.isShared());
         if (!userDetails.getHousehold().getId().equals(mealHouseholdId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Meal belongs to another household (meal=" + mealHouseholdId + " user=" + userDetails.getHousehold().getId() + ")");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Meal not found or belongs to another household (meal=" + mealHouseholdId + " user=" + userDetails.getHousehold().getId() + ")");
         }
         if (menuEntryRepository.existsByMeal(meal)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,

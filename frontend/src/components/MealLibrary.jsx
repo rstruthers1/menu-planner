@@ -60,7 +60,9 @@ function MealLibrary() {
         try {
             const r = await authFetch(`/api/meals/${meal.id}`, { method: 'DELETE' });
             if (!r.ok) {
-                const msg = await r.text().catch(() => '');
+                const text = await r.text().catch(() => '');
+                let msg = text;
+                try { msg = JSON.parse(text).message || text; } catch { /* use raw text */ }
                 const title = r.status === 409 ? 'Cannot delete' : 'Delete failed';
                 const status = r.status === 409 ? 'warning' : 'error';
                 toast({ title, description: msg || undefined, status, duration: 4000, isClosable: true });

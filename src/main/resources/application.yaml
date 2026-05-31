@@ -9,6 +9,15 @@ jwt:
   secret: ${JWT_SECRET:please-change-this-in-production-must-be-32-plus-chars!!}
   expiration-days: 30
 
+server:
+  error:
+    include-message: always
+
+logging:
+  level:
+    com.menuplanner.controller: DEBUG
+    com.menuplanner.filter: INFO
+
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/menu_planner
