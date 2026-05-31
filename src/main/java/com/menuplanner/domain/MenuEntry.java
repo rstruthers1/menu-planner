@@ -22,4 +22,8 @@ public class MenuEntry {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "meal_id")
     private Meal meal;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "household_id")
+    private Household household;
 }

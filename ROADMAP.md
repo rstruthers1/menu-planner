@@ -6,6 +6,11 @@
 - Keep `ddl-auto: update` for now (switch to migrations later)
 - Excel seed still works as-is
 
+## Backlog
+- Switch frontend from Chakra UI v2 to v3 (API has changed — docs will match again)
+- Add database migrations — evaluate Flyway vs Liquibase (Liquibase advantage: already used at work, less context-switching)
+- Move `ANTHROPIC_API_KEY` to a `.env` file for cleaner local dev
+
 ## Phase 2 — Auth
 - Spring Security + JWT (stateless, works well with React SPA)
 - `User` entity: email, BCrypt password, display name
