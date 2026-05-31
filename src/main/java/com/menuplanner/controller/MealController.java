@@ -81,8 +81,14 @@ public class MealController {
     @DeleteMapping("/{id}")
     public void deleteMeal(@PathVariable Long id,
                            @AuthenticationPrincipal AppUserDetails userDetails) {
-        Meal meal = mealRepository.findByIdForHousehold(id, userDetails.getHousehold().getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Meal not found or belongs to another household"));
+        System.out.println(">>> deleteMeal called: id=" + id + " userHouseholdId=" + userDetails.getHousehold().getId());
+        Meal meal = mealRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        Long mealHouseholdId = meal.getHousehold() != null ? meal.getHousehold().getId() : null;
+        System.out.println(">>> meal householdId=" + mealHouseholdId + " shared=" + meal.isShared());
+        if (!userDetails.getHousehold().getId().equals(mealHouseholdId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Meal belongs to another household (meal=" + mealHouseholdId + " user=" + userDetails.getHousehold().getId() + ")");
+        }
         if (menuEntryRepository.existsByMeal(meal)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "This meal is used in your plan — remove it from all days first.");
