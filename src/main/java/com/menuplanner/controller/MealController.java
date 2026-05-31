@@ -56,7 +56,7 @@ public class MealController {
     @PutMapping("/{id}")
     public Map<String, Object> updateMeal(@PathVariable Long id, @RequestBody MealRequest req,
                                           @AuthenticationPrincipal AppUserDetails userDetails) {
-        Meal meal = mealRepository.findByIdAndHousehold(id, userDetails.getHousehold())
+        Meal meal = mealRepository.findByIdAndHouseholdId(id, userDetails.getHousehold().getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Meal not found or belongs to another household"));
         meal.setName(req.name().trim());
         applyRequest(meal, req);
@@ -66,7 +66,7 @@ public class MealController {
     @DeleteMapping("/{id}")
     public void deleteMeal(@PathVariable Long id,
                            @AuthenticationPrincipal AppUserDetails userDetails) {
-        Meal meal = mealRepository.findByIdAndHousehold(id, userDetails.getHousehold())
+        Meal meal = mealRepository.findByIdAndHouseholdId(id, userDetails.getHousehold().getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Meal not found or belongs to another household"));
         if (menuEntryRepository.existsByMeal(meal)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
