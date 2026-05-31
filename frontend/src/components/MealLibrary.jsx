@@ -59,12 +59,13 @@ function MealLibrary() {
     const handleDelete = async (meal) => {
         try {
             const r = await authFetch(`/api/meals/${meal.id}`, { method: 'DELETE' });
-            if (r.status === 409) {
-                const msg = await r.text();
-                toast({ title: 'Cannot delete', description: msg, status: 'warning', duration: 4000, isClosable: true });
+            if (!r.ok) {
+                const msg = await r.text().catch(() => '');
+                const title = r.status === 409 ? 'Cannot delete' : 'Delete failed';
+                const status = r.status === 409 ? 'warning' : 'error';
+                toast({ title, description: msg || undefined, status, duration: 4000, isClosable: true });
                 return;
             }
-            if (!r.ok) throw new Error();
             setMeals(prev => prev.filter(m => m.id !== meal.id));
         } catch {
             toast({ title: 'Delete failed', status: 'error', duration: 3000, isClosable: true });

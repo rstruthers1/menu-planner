@@ -57,7 +57,7 @@ public class MealController {
     public Map<String, Object> updateMeal(@PathVariable Long id, @RequestBody MealRequest req,
                                           @AuthenticationPrincipal AppUserDetails userDetails) {
         Meal meal = mealRepository.findByIdAndHousehold(id, userDetails.getHousehold())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Meal not found or belongs to another household"));
         meal.setName(req.name().trim());
         applyRequest(meal, req);
         return toResponse(mealRepository.save(meal));
@@ -67,7 +67,7 @@ public class MealController {
     public void deleteMeal(@PathVariable Long id,
                            @AuthenticationPrincipal AppUserDetails userDetails) {
         Meal meal = mealRepository.findByIdAndHousehold(id, userDetails.getHousehold())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Meal not found or belongs to another household"));
         if (menuEntryRepository.existsByMeal(meal)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "This meal is used in your plan — remove it from all days first.");
