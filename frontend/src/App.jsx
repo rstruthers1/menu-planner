@@ -106,7 +106,12 @@ function App() {
     return (
         <Box maxW="640px" mx="auto" p={6}>
             <HStack justify="space-between" mb={6}>
-                <Heading as="h1" size="lg">Meal Planner</Heading>
+                <Box>
+                    <Heading as="h1" size="lg">Meal Planner</Heading>
+                    {currentUser.householdName && (
+                        <Text fontSize="xs" color="gray.400" mt="1px">{currentUser.householdName} household</Text>
+                    )}
+                </Box>
                 <HStack spacing={3}>
                     <Text fontSize="sm" color="gray.500">{currentUser.name}</Text>
                     <Button size="xs" variant="ghost" colorScheme="gray" onClick={handleLogout}>Log out</Button>
