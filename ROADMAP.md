@@ -30,6 +30,12 @@
 - **Recipe link preserved** — inline saves no longer overwrite library metadata
 - **Meal Library tab** — searchable list of all meals; edit name/link/notes/temp/seasons via modal; delete with inline confirmation (blocked if meal is still on the calendar); meal name is a clickable link when a recipe URL is set; season and temp constraint badges shown per meal
 
+## Phase 2.6 — Bug Fixes & Observability ✅ done
+- **Meal Library delete fixed** — Spring Security was converting all `ResponseStatusException` responses (409, 404, etc.) to 403 by blocking Tomcat's internal `/error` forward; fixed by adding `/error` to `permitAll()`
+- **Error messages reach the frontend** — `server.error.include-message: always` added so toast messages show the actual reason (e.g. "meal is in use")
+- **Response logging filter** — `ResponseLoggingFilter` logs every API response method, path, status, and body at INFO level for easier debugging
+- **SLF4J logging in MealController** — debug-level logging on meal delete for household ownership diagnostics
+
 ## Phase 3 — Household Invite Flow
 - Currently `register` auto-assigns to the first household (fine for one household)
 - Proper invite codes: one person creates household, shares code, others join
