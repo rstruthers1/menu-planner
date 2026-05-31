@@ -44,6 +44,21 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
         };
         const url = mode === 'edit' ? `/api/menus/${entry.id}` : '/api/menus';
         const method = mode === 'edit' ? 'PUT' : 'POST';
+
+        // Warn (but don't block) if the name already exists
+        const nameChanged = !(mode === 'edit' && entry?.mealName === form.mealName.trim());
+        if (nameChanged && form.mealName.trim()) {
+            try {
+                const check = await authFetch(`/api/meals/check?name=${encodeURIComponent(form.mealName.trim())}`);
+                const { existsInHousehold, existsShared } = await check.json();
+                if (existsInHousehold) {
+                    toast({ title: `"${form.mealName.trim()}" already exists in your household`, status: 'warning', duration: 4000, isClosable: true });
+                } else if (existsShared) {
+                    toast({ title: `"${form.mealName.trim()}" exists in the shared library`, status: 'info', duration: 4000, isClosable: true });
+                }
+            } catch { /* ignore check errors, proceed with save */ }
+        }
+
         try {
             const r = await authFetch(url, {
                 method,

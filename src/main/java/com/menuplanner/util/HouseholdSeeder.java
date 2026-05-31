@@ -53,5 +53,8 @@ public class HouseholdSeeder implements CommandLineRunner {
 
         // Mark all unowned meals as shared (seeded from Excel — available to everyone)
         jdbc.update("UPDATE meal SET household_id = ?, shared = true WHERE household_id IS NULL", struthers.getId());
+
+        // Drop global unique constraint on meal name — duplicate names across households are allowed
+        jdbc.execute("ALTER TABLE meal DROP CONSTRAINT IF EXISTS meal_name_unique");
     }
 }
