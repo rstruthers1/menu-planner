@@ -56,11 +56,8 @@ public class MealController {
     @PutMapping("/{id}")
     public Map<String, Object> updateMeal(@PathVariable Long id, @RequestBody MealRequest req,
                                           @AuthenticationPrincipal AppUserDetails userDetails) {
-        Meal meal = mealRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        if (!userDetails.getHousehold().getId().equals(meal.getHousehold() != null ? meal.getHousehold().getId() : null)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
+        Meal meal = mealRepository.findByIdAndHousehold(id, userDetails.getHousehold())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN));
         meal.setName(req.name().trim());
         applyRequest(meal, req);
         return toResponse(mealRepository.save(meal));
@@ -69,11 +66,8 @@ public class MealController {
     @DeleteMapping("/{id}")
     public void deleteMeal(@PathVariable Long id,
                            @AuthenticationPrincipal AppUserDetails userDetails) {
-        Meal meal = mealRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        if (!userDetails.getHousehold().getId().equals(meal.getHousehold() != null ? meal.getHousehold().getId() : null)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
+        Meal meal = mealRepository.findByIdAndHousehold(id, userDetails.getHousehold())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN));
         if (menuEntryRepository.existsByMeal(meal)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "This meal is used in your plan — remove it from all days first.");

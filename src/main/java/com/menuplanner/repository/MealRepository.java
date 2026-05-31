@@ -19,6 +19,8 @@ public interface MealRepository extends JpaRepository<Meal, Long> {
     @Query("SELECT DISTINCT m.name FROM Meal m WHERE m.household = :household OR m.shared = true ORDER BY m.name")
     List<String> findNamesForHousehold(@Param("household") Household household);
 
+    Optional<Meal> findByIdAndHousehold(Long id, Household household);
+
     @Query("SELECT m FROM Meal m WHERE m.household = :household OR m.shared = true ORDER BY m.name")
     List<Meal> findMealsForHousehold(@Param("household") Household household);
 }
