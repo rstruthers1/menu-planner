@@ -3,6 +3,7 @@ import {
     AlertDialog, AlertDialogBody, AlertDialogContent, AlertDialogFooter,
     AlertDialogHeader, AlertDialogOverlay, Button, HStack, useDisclosure,
 } from '@chakra-ui/react';
+import AddMealModal from './AddMealModal';
 import AiChatModal from './AiChatModal';
 import DayRow from './DayRow';
 import MealDetailModal from './MealDetailModal';
@@ -15,6 +16,7 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
     const [detailDay, setDetailDay] = useState(null);
     const [aiChatDay, setAiChatDay] = useState(null);
     const { isOpen: isAlertOpen, onOpen: onAlertOpen, onClose: onAlertClose } = useDisclosure();
+    const { isOpen: isAddMealOpen, onOpen: onAddMealOpen, onClose: onAddMealClose } = useDisclosure();
     const cancelRef = useRef();
 
     const days = Array.from({ length: 7 }, (_, i) => {
@@ -192,6 +194,9 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
                 />
             ))}
             <HStack justify="flex-end" mt={3} spacing={2}>
+                <Button size="xs" variant="ghost" colorScheme="green" onClick={onAddMealOpen}>
+                    + Add to meal library
+                </Button>
                 <Button size="xs" variant="ghost" colorScheme="gray" onClick={handlePrint}>
                     Print week
                 </Button>
@@ -202,6 +207,15 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
                 )}
             </HStack>
         </div>
+        <AddMealModal
+            isOpen={isAddMealOpen}
+            onClose={onAddMealClose}
+            onAdded={(saved) => {
+                if (saved.name && !mealSuggestions.includes(saved.name)) {
+                    setMealSuggestions(prev => [...prev, saved.name].sort());
+                }
+            }}
+        />
         <AlertDialog isOpen={isAlertOpen} leastDestructiveRef={cancelRef} onClose={onAlertClose}>
             <AlertDialogOverlay>
                 <AlertDialogContent>

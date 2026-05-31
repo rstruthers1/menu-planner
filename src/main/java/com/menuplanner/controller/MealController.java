@@ -1,13 +1,12 @@
 package com.menuplanner.controller;
 
+import com.menuplanner.domain.Meal;
 import com.menuplanner.repository.MealRepository;
 import com.menuplanner.security.AppUserDetails;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
@@ -28,4 +27,25 @@ public class MealController {
         boolean existsShared = mealRepository.findFirstByNameAndSharedTrue(trimmed).isPresent();
         return Map.of("existsInHousehold", existsInHousehold, "existsShared", existsShared);
     }
+
+    @PostMapping
+    public Map<String, Object> createMeal(@RequestBody MealRequest req,
+                                          @AuthenticationPrincipal AppUserDetails userDetails) {
+        Meal meal = new Meal();
+        meal.setName(req.name().trim());
+        meal.setRecipeLink(req.recipeLink());
+        meal.setNotes(req.notes());
+        meal.setHousehold(userDetails.getHousehold());
+        meal.setShared(Boolean.TRUE.equals(req.shared()));
+        Meal saved = mealRepository.save(meal);
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("id", saved.getId());
+        resp.put("name", saved.getName());
+        resp.put("recipeLink", saved.getRecipeLink());
+        resp.put("notes", saved.getNotes());
+        resp.put("shared", saved.isShared());
+        return resp;
+    }
+
+    record MealRequest(String name, String recipeLink, String notes, Boolean shared) {}
 }
