@@ -12,6 +12,7 @@ import java.util.Optional;
 
 @Repository
 public interface MealRepository extends JpaRepository<Meal, Long> {
+    Optional<Meal> findFirstByName(String name);
     Optional<Meal> findByNameAndHousehold(String name, Household household);
     Optional<Meal> findFirstByNameAndSharedTrue(String name);
 

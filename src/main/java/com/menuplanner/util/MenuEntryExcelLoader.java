@@ -57,7 +57,7 @@ public class MenuEntryExcelLoader {
                 String recipeLink = getCellValue(row, 6);
                 String notes = getCellValue(row, 7);
 
-                Meal meal = mealRepository.findByName(mealName).orElseGet(() -> {
+                Meal meal = mealRepository.findFirstByName(mealName).orElseGet(() -> {
                     Meal m = new Meal();
                     m.setName(mealName);
                     m.setRecipeLink(recipeLink.isEmpty() ? null : recipeLink);
