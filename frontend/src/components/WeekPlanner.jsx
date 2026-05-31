@@ -1,4 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import {
+    AlertDialog, AlertDialogBody, AlertDialogContent, AlertDialogFooter,
+    AlertDialogHeader, AlertDialogOverlay, Button, useDisclosure,
+} from '@chakra-ui/react';
 import AiChatModal from './AiChatModal';
 import DayRow from './DayRow';
 import MealDetailModal from './MealDetailModal';
@@ -10,6 +14,8 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions, setMealSuggestions, toDateStr }) {
     const [detailDay, setDetailDay] = useState(null);
     const [aiChatDay, setAiChatDay] = useState(null);
+    const { isOpen: isAlertOpen, onOpen: onAlertOpen, onClose: onAlertClose } = useDisclosure();
+    const cancelRef = useRef();
 
     const days = Array.from({ length: 7 }, (_, i) => {
         const d = new Date(weekStart);
@@ -82,6 +88,14 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
             .catch(console.error);
     };
 
+    const handleClearWeek = () => {
+        const weekEntries = entries.filter(e => days.some(d => d.dateStr === e.mealDate));
+        Promise.all(weekEntries.map(e => authFetch(`/api/menus/${e.id}`, { method: 'DELETE' })))
+            .then(() => setEntries(prev => prev.filter(e => !days.some(d => d.dateStr === e.mealDate))))
+            .catch(console.error);
+        onAlertClose();
+    };
+
     const handleSuggestions = (suggestions) => {
         Object.entries(suggestions).forEach(([dateStr, mealName]) => {
             const day = days.find(d => d.dateStr === dateStr);
@@ -118,7 +132,32 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
                     }}
                 />
             ))}
+            {entries.some(e => days.some(d => d.dateStr === e.mealDate)) && (
+                <Button
+                    size="xs"
+                    variant="ghost"
+                    colorScheme="red"
+                    mt={3}
+                    onClick={onAlertOpen}
+                >
+                    Clear this week
+                </Button>
+            )}
         </div>
+        <AlertDialog isOpen={isAlertOpen} leastDestructiveRef={cancelRef} onClose={onAlertClose}>
+            <AlertDialogOverlay>
+                <AlertDialogContent>
+                    <AlertDialogHeader fontSize="md" fontWeight="bold">Clear this week?</AlertDialogHeader>
+                    <AlertDialogBody fontSize="sm">
+                        This will remove all meals planned for this week. This cannot be undone.
+                    </AlertDialogBody>
+                    <AlertDialogFooter>
+                        <Button ref={cancelRef} size="sm" onClick={onAlertClose}>Cancel</Button>
+                        <Button colorScheme="red" size="sm" onClick={handleClearWeek} ml={3}>Clear week</Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialogOverlay>
+        </AlertDialog>
         {aiChatDay && (
             <AiChatModal
                 isOpen={!!aiChatDay}

@@ -4,13 +4,14 @@ import {
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 
+const DEFAULT_PROMPT = 'Suggest meals for the week based on predicted weather and our previous history';
+
 function WeekHelper({ weekStart, weather, entries, toDateStr, onSuggestions }) {
     const [prompt, setPrompt] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
     const handleSuggest = () => {
-        if (!prompt.trim()) return;
         setLoading(true);
         setError('');
 
@@ -31,7 +32,7 @@ function WeekHelper({ weekStart, weather, entries, toDateStr, onSuggestions }) {
             method: 'POST',
             body: JSON.stringify({
                 weekStart: toDateStr(weekStart),
-                prompt: prompt.trim(),
+                prompt: prompt.trim() || DEFAULT_PROMPT,
                 weather: weatherMap,
                 existingMeals,
                 targetDate: null,
@@ -55,7 +56,7 @@ function WeekHelper({ weekStart, weather, entries, toDateStr, onSuggestions }) {
                 Need help planning?
             </Text>
             <Text fontSize="xs" color="purple.500" mb={3}>
-                Describe your week and get meal ideas from your history. Empty days will be filled in.
+                Optionally describe your week, or just click Suggest to use weather and history. Empty days will be filled in.
             </Text>
             <VStack align="stretch" spacing={2}>
                 <Textarea
@@ -77,7 +78,6 @@ function WeekHelper({ weekStart, weather, entries, toDateStr, onSuggestions }) {
                         onClick={handleSuggest}
                         isLoading={loading}
                         spinner={<Spinner size="xs" />}
-                        isDisabled={!prompt.trim()}
                     >
                         Suggest meals
                     </Button>
