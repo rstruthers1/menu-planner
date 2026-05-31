@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Badge, Box, Button, HStack, Input, Link, Text, useDisclosure, useToast, VStack,
 } from '@chakra-ui/react';
@@ -15,19 +15,22 @@ function tempLabel(minTemp, maxTemp) {
     return null;
 }
 
-function linkDomain(url) {
-    try { return new URL(url).hostname.replace(/^www\./, ''); }
-    catch { return 'Recipe'; }
-}
-
-function MealLibrary({ mealLibrary, setMealLibrary }) {
+function MealLibrary() {
+    const [meals, setMeals] = useState([]);
     const [search, setSearch] = useState('');
     const [editMeal, setEditMeal] = useState(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
     const { isOpen, onOpen, onClose } = useDisclosure();
     const toast = useToast();
 
-    const filtered = mealLibrary.filter(m =>
+    useEffect(() => {
+        authFetch('/api/meals')
+            .then(r => r.json())
+            .then(data => setMeals(data.sort((a, b) => a.name.localeCompare(b.name))))
+            .catch(console.error);
+    }, []);
+
+    const filtered = meals.filter(m =>
         m.name.toLowerCase().includes(search.toLowerCase())
     );
 
@@ -42,10 +45,15 @@ function MealLibrary({ mealLibrary, setMealLibrary }) {
     };
 
     const handleSaved = (saved) => {
-        setMealLibrary(prev => prev.map(m => m.id === saved.id
-            ? { ...m, ...saved, seasons: saved.seasons || [] }
+        setMeals(prev => prev.map(m => m.id === saved.id
+            ? { ...saved, seasons: saved.seasons || [] }
             : m
         ));
+    };
+
+    const handleAdded = (saved) => {
+        setMeals(prev => [...prev, { ...saved, seasons: saved.seasons || [] }]
+            .sort((a, b) => a.name.localeCompare(b.name)));
     };
 
     const handleDelete = async (meal) => {
@@ -57,13 +65,16 @@ function MealLibrary({ mealLibrary, setMealLibrary }) {
                 return;
             }
             if (!r.ok) throw new Error();
-            setMealLibrary(prev => prev.filter(m => m.id !== meal.id));
+            setMeals(prev => prev.filter(m => m.id !== meal.id));
         } catch {
             toast({ title: 'Delete failed', status: 'error', duration: 3000, isClosable: true });
         } finally {
             setDeleteConfirmId(null);
         }
     };
+
+    const hasTempConstraint = m => m.minTemp != null || m.maxTemp != null;
+    const hasSeasons = m => Array.isArray(m.seasons) && m.seasons.length > 0;
 
     return (
         <Box>
@@ -97,33 +108,44 @@ function MealLibrary({ mealLibrary, setMealLibrary }) {
                     >
                         <HStack justify="space-between" align="flex-start">
                             <Box flex={1} minW={0}>
-                                <HStack spacing={2} align="center">
-                                    <Text fontWeight="semibold" fontSize="sm">{meal.name}</Text>
-                                    {meal.shared && <Badge colorScheme="blue" fontSize="10px">shared</Badge>}
-                                    {meal.recipeLink && (
-                                        <Link href={meal.recipeLink} isExternal fontSize="xs" color="blue.400" flexShrink={0}>
-                                            🔗 {linkDomain(meal.recipeLink)}
+                                <HStack spacing={2} align="center" flexWrap="wrap">
+                                    {meal.recipeLink ? (
+                                        <Link
+                                            href={meal.recipeLink}
+                                            isExternal
+                                            fontWeight="semibold"
+                                            fontSize="sm"
+                                            color="blue.600"
+                                            _hover={{ textDecoration: 'underline' }}
+                                        >
+                                            {meal.name} ↗
                                         </Link>
+                                    ) : (
+                                        <Text fontWeight="semibold" fontSize="sm">{meal.name}</Text>
                                     )}
+                                    {meal.shared && <Badge colorScheme="blue" fontSize="10px">shared</Badge>}
                                 </HStack>
-                                {(meal.seasons?.length > 0 || meal.minTemp != null || meal.maxTemp != null) && (
-                                    <HStack spacing={2} mt="3px" flexWrap="wrap">
-                                        {meal.seasons?.map(s => (
+
+                                {(hasSeasons(meal) || hasTempConstraint(meal)) && (
+                                    <HStack spacing={2} mt="4px" flexWrap="wrap">
+                                        {hasSeasons(meal) && meal.seasons.map(s => (
                                             <Badge key={s} colorScheme={SEASON_COLORS[s]} fontSize="10px" variant="subtle">
                                                 {SEASON_LABELS[s]}
                                             </Badge>
                                         ))}
-                                        {(meal.minTemp != null || meal.maxTemp != null) && (
+                                        {hasTempConstraint(meal) && (
                                             <Badge colorScheme="gray" fontSize="10px" variant="outline">
                                                 🌡 {tempLabel(meal.minTemp, meal.maxTemp)}
                                             </Badge>
                                         )}
                                     </HStack>
                                 )}
+
                                 {meal.notes && (
                                     <Text fontSize="xs" color="gray.400" mt="2px" noOfLines={1}>{meal.notes}</Text>
                                 )}
                             </Box>
+
                             <HStack spacing={1} flexShrink={0}>
                                 {deleteConfirmId === meal.id ? (
                                     <>
@@ -147,10 +169,7 @@ function MealLibrary({ mealLibrary, setMealLibrary }) {
                 isOpen={isOpen}
                 onClose={handleModalClose}
                 editMeal={editMeal}
-                onAdded={editMeal ? handleSaved : (saved) => {
-                    setMealLibrary(prev => [...prev, { ...saved, seasons: saved.seasons || [] }]
-                        .sort((a, b) => a.name.localeCompare(b.name)));
-                }}
+                onAdded={editMeal ? handleSaved : handleAdded}
             />
         </Box>
     );

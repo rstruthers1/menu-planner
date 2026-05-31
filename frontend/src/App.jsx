@@ -145,7 +145,7 @@ function App() {
                         <History key={historyKey} />
                     </TabPanel>
                     <TabPanel p={0} pt={2}>
-                        <MealLibrary mealLibrary={mealLibrary} setMealLibrary={setMealLibrary} />
+                        <MealLibrary />
                     </TabPanel>
                 </TabPanels>
             </Tabs>
