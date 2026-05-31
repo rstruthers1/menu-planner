@@ -2,9 +2,12 @@ package com.menuplanner.controller;
 
 import com.menuplanner.domain.Meal;
 import com.menuplanner.repository.MealRepository;
+import com.menuplanner.repository.MenuEntryRepository;
 import com.menuplanner.security.AppUserDetails;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -17,27 +20,17 @@ import java.util.stream.Collectors;
 public class MealController {
 
     private final MealRepository mealRepository;
+    private final MenuEntryRepository menuEntryRepository;
 
-    public MealController(MealRepository mealRepository) {
+    public MealController(MealRepository mealRepository, MenuEntryRepository menuEntryRepository) {
         this.mealRepository = mealRepository;
+        this.menuEntryRepository = menuEntryRepository;
     }
 
     @GetMapping
     public List<Map<String, Object>> getMeals(@AuthenticationPrincipal AppUserDetails userDetails) {
         return mealRepository.findMealsForHousehold(userDetails.getHousehold()).stream()
-                .map(m -> {
-                    Map<String, Object> resp = new LinkedHashMap<>();
-                    resp.put("id", m.getId());
-                    resp.put("name", m.getName());
-                    resp.put("recipeLink", m.getRecipeLink());
-                    resp.put("notes", m.getNotes());
-                    resp.put("minTemp", m.getMinTemp());
-                    resp.put("maxTemp", m.getMaxTemp());
-                    resp.put("seasons", m.getSeasons() != null
-                            ? Arrays.stream(m.getSeasons().split(",")).filter(s -> !s.isBlank()).collect(Collectors.toList())
-                            : List.of());
-                    return resp;
-                })
+                .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -55,28 +48,64 @@ public class MealController {
                                           @AuthenticationPrincipal AppUserDetails userDetails) {
         Meal meal = new Meal();
         meal.setName(req.name().trim());
+        meal.setHousehold(userDetails.getHousehold());
+        applyRequest(meal, req);
+        return toResponse(mealRepository.save(meal));
+    }
+
+    @PutMapping("/{id}")
+    public Map<String, Object> updateMeal(@PathVariable Long id, @RequestBody MealRequest req,
+                                          @AuthenticationPrincipal AppUserDetails userDetails) {
+        Meal meal = mealRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (!userDetails.getHousehold().getId().equals(meal.getHousehold() != null ? meal.getHousehold().getId() : null)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+        meal.setName(req.name().trim());
+        applyRequest(meal, req);
+        return toResponse(mealRepository.save(meal));
+    }
+
+    @DeleteMapping("/{id}")
+    public void deleteMeal(@PathVariable Long id,
+                           @AuthenticationPrincipal AppUserDetails userDetails) {
+        Meal meal = mealRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (!userDetails.getHousehold().getId().equals(meal.getHousehold() != null ? meal.getHousehold().getId() : null)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+        if (menuEntryRepository.existsByMeal(meal)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "This meal is used in your plan — remove it from all days first.");
+        }
+        mealRepository.deleteById(id);
+    }
+
+    private void applyRequest(Meal meal, MealRequest req) {
         meal.setRecipeLink(req.recipeLink());
         meal.setNotes(req.notes());
-        meal.setHousehold(userDetails.getHousehold());
         meal.setShared(Boolean.TRUE.equals(req.shared()));
         meal.setMinTemp(req.minTemp());
         meal.setMaxTemp(req.maxTemp());
         meal.setSeasons(req.seasons() == null || req.seasons().isEmpty() ? null
                 : req.seasons().stream().filter(s -> s != null && !s.isBlank()).collect(Collectors.joining(",")));
-        Meal saved = mealRepository.save(meal);
+    }
+
+    private Map<String, Object> toResponse(Meal m) {
         Map<String, Object> resp = new LinkedHashMap<>();
-        resp.put("id", saved.getId());
-        resp.put("name", saved.getName());
-        resp.put("recipeLink", saved.getRecipeLink());
-        resp.put("notes", saved.getNotes());
-        resp.put("shared", saved.isShared());
-        resp.put("minTemp", saved.getMinTemp());
-        resp.put("maxTemp", saved.getMaxTemp());
-        resp.put("seasons", saved.getSeasons() != null
-                ? Arrays.stream(saved.getSeasons().split(",")).filter(s -> !s.isBlank()).collect(Collectors.toList())
+        resp.put("id", m.getId());
+        resp.put("name", m.getName());
+        resp.put("recipeLink", m.getRecipeLink());
+        resp.put("notes", m.getNotes());
+        resp.put("shared", m.isShared());
+        resp.put("minTemp", m.getMinTemp());
+        resp.put("maxTemp", m.getMaxTemp());
+        resp.put("seasons", m.getSeasons() != null
+                ? Arrays.stream(m.getSeasons().split(",")).filter(s -> !s.isBlank()).collect(Collectors.toList())
                 : List.of());
         return resp;
     }
 
-    record MealRequest(String name, String recipeLink, String notes, Boolean shared, Integer minTemp, Integer maxTemp, List<String> seasons) {}
+    record MealRequest(String name, String recipeLink, String notes, Boolean shared,
+                       Integer minTemp, Integer maxTemp, List<String> seasons) {}
 }

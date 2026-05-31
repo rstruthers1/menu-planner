@@ -4,6 +4,7 @@ import {
 } from '@chakra-ui/react';
 import WeekPlanner from './components/WeekPlanner';
 import History from './components/History';
+import MealLibrary from './components/MealLibrary';
 import Login from './components/Login';
 import { authFetch } from './utils/api';
 
@@ -121,6 +122,7 @@ function App() {
                 <TabList mb={4}>
                     <Tab>Planner</Tab>
                     <Tab>History</Tab>
+                    <Tab>Meal Library</Tab>
                 </TabList>
                 <TabPanels>
                     <TabPanel p={0}>
@@ -141,6 +143,9 @@ function App() {
                     </TabPanel>
                     <TabPanel p={0} pt={2}>
                         <History key={historyKey} />
+                    </TabPanel>
+                    <TabPanel p={0} pt={2}>
+                        <MealLibrary mealLibrary={mealLibrary} setMealLibrary={setMealLibrary} />
                     </TabPanel>
                 </TabPanels>
             </Tabs>

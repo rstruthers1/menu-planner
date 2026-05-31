@@ -7,17 +7,32 @@ import {
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 
-function AddMealModal({ isOpen, onClose, onAdded }) {
-    const [form, setForm] = useState({ name: '', recipeLink: '', notes: '', shared: false, minTemp: '', maxTemp: '', seasons: [] });
+const EMPTY_FORM = { name: '', recipeLink: '', notes: '', shared: false, minTemp: '', maxTemp: '', seasons: [] };
+
+function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
+    const isEdit = !!editMeal;
+    const [form, setForm] = useState(EMPTY_FORM);
     const [dupWarning, setDupWarning] = useState(null);
     const [loading, setLoading] = useState(false);
     const toast = useToast();
 
     useEffect(() => {
         if (!isOpen) return;
-        setForm({ name: '', recipeLink: '', notes: '', shared: false, minTemp: '', maxTemp: '', seasons: [] });
         setDupWarning(null);
-    }, [isOpen]);
+        if (isEdit) {
+            setForm({
+                name: editMeal.name || '',
+                recipeLink: editMeal.recipeLink || '',
+                notes: editMeal.notes || '',
+                shared: editMeal.shared ?? false,
+                minTemp: editMeal.minTemp ?? '',
+                maxTemp: editMeal.maxTemp ?? '',
+                seasons: editMeal.seasons || [],
+            });
+        } else {
+            setForm(EMPTY_FORM);
+        }
+    }, [isOpen, editMeal, isEdit]);
 
     const handleChange = (e) => {
         if (e.target.name === 'name') setDupWarning(null);
@@ -27,8 +42,10 @@ function AddMealModal({ isOpen, onClose, onAdded }) {
     const doSave = async () => {
         setLoading(true);
         try {
-            const r = await authFetch('/api/meals', {
-                method: 'POST',
+            const url = isEdit ? `/api/meals/${editMeal.id}` : '/api/meals';
+            const method = isEdit ? 'PUT' : 'POST';
+            const r = await authFetch(url, {
+                method,
                 body: JSON.stringify({
                     ...form,
                     minTemp: form.minTemp !== '' ? Number(form.minTemp) : null,
@@ -49,12 +66,14 @@ function AddMealModal({ isOpen, onClose, onAdded }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        try {
-            const check = await authFetch(`/api/meals/check?name=${encodeURIComponent(form.name.trim())}`);
-            const { existsInHousehold, existsShared } = await check.json();
-            if (existsInHousehold) { setDupWarning('household'); return; }
-            if (existsShared) { setDupWarning('shared'); return; }
-        } catch { /* ignore, proceed */ }
+        if (!isEdit || form.name.trim() !== editMeal.name) {
+            try {
+                const check = await authFetch(`/api/meals/check?name=${encodeURIComponent(form.name.trim())}`);
+                const { existsInHousehold, existsShared } = await check.json();
+                if (existsInHousehold && !isEdit) { setDupWarning('household'); return; }
+                if (existsShared && !isEdit) { setDupWarning('shared'); return; }
+            } catch { /* ignore, proceed */ }
+        }
         await doSave();
     };
 
@@ -62,7 +81,7 @@ function AddMealModal({ isOpen, onClose, onAdded }) {
         <Modal isOpen={isOpen} onClose={onClose} size="md">
             <ModalOverlay />
             <ModalContent>
-                <ModalHeader fontSize="md">Add meal to library</ModalHeader>
+                <ModalHeader fontSize="md">{isEdit ? 'Edit meal' : 'Add meal to library'}</ModalHeader>
                 <ModalCloseButton />
                 <form onSubmit={handleSubmit}>
                     <ModalBody>
@@ -153,7 +172,9 @@ function AddMealModal({ isOpen, onClose, onAdded }) {
                     </ModalBody>
                     <ModalFooter>
                         <Button variant="ghost" mr={3} onClick={onClose}>Cancel</Button>
-                        <Button type="submit" colorScheme="green" isLoading={loading}>Add meal</Button>
+                        <Button type="submit" colorScheme="green" isLoading={loading}>
+                            {isEdit ? 'Save changes' : 'Add meal'}
+                        </Button>
                     </ModalFooter>
                 </form>
             </ModalContent>
