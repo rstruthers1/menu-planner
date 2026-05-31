@@ -28,7 +28,7 @@
 - **AI week suggestions** work without typing (default prompt uses weather + history)
 - **Add meal to library** without selecting a day (+ Add to meal library button)
 - **Recipe link preserved** — inline saves no longer overwrite library metadata
-- **Meal Library tab** — searchable list of all meals; edit name/link/notes/temp/seasons inline via modal; delete with confirmation (blocked if meal is still on the calendar); recipe link shown as clickable domain name with season and temp badges
+- **Meal Library tab** — searchable list of all meals; edit name/link/notes/temp/seasons via modal; delete with inline confirmation (blocked if meal is still on the calendar); meal name is a clickable link when a recipe URL is set; season and temp constraint badges shown per meal
 
 ## Phase 3 — Household Invite Flow
 - Currently `register` auto-assigns to the first household (fine for one household)
