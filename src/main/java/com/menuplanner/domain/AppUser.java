@@ -19,7 +19,7 @@ public class AppUser {
 
     private String passwordHash;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "household_id")
     private Household household;
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
     Box, Link, Table, Tbody, Td, Text, Th, Thead, Tr,
 } from '@chakra-ui/react';
+import { authFetch } from '../utils/api';
 
 function weatherIcon(condition) {
     if (!condition) return '';
@@ -21,7 +22,7 @@ function History() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('/api/history')
+        authFetch('/api/history')
             .then(r => r.json())
             .then(data => { setEntries(data); setLoading(false); })
             .catch(() => setLoading(false));

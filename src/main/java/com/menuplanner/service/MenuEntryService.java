@@ -1,5 +1,6 @@
 package com.menuplanner.service;
 
+import com.menuplanner.domain.Household;
 import com.menuplanner.domain.Meal;
 import com.menuplanner.domain.MenuEntry;
 import com.menuplanner.repository.MealRepository;
@@ -20,16 +21,16 @@ public class MenuEntryService {
         this.mealRepository = mealRepository;
     }
 
-    public List<MenuEntry> getAllMenus() {
-        return repository.findAll();
+    public List<MenuEntry> getAllMenus(Household household) {
+        return repository.findAllByHousehold(household);
     }
 
     public MenuEntry saveMenu(MenuEntry entry) {
         return repository.save(entry);
     }
 
-    public List<MenuEntry> getMenusForWeek(LocalDate start, LocalDate end) {
-        return repository.findByMealDateBetween(start, end);
+    public List<MenuEntry> getMenusForWeek(LocalDate start, LocalDate end, Household household) {
+        return repository.findByMealDateBetweenAndHousehold(start, end, household);
     }
 
     public MenuEntry updateMenu(Long id, MenuEntry updated) {
@@ -47,16 +48,16 @@ public class MenuEntryService {
         return repository.save(existing);
     }
 
-    public List<MenuEntry> getPastMeals() {
-        return repository.findByMealDateLessThanEqualOrderByMealDateDesc(LocalDate.now());
+    public List<MenuEntry> getPastMeals(Household household) {
+        return repository.findByMealDateLessThanEqualAndHouseholdOrderByMealDateDesc(LocalDate.now(), household);
     }
 
     public void deleteMenu(Long id) {
         repository.deleteById(id);
     }
 
-    public List<String> getMealNames() {
-        return mealRepository.findAllNamesOrdered();
+    public List<String> getMealNames(Household household) {
+        return repository.findDistinctMealNamesByHousehold(household);
     }
 
     public Meal findOrCreateMeal(String name, String recipeLink, String notes) {

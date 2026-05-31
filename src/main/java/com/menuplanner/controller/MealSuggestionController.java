@@ -1,10 +1,13 @@
 package com.menuplanner.controller;
 
+import com.menuplanner.domain.Household;
 import com.menuplanner.domain.MenuEntry;
 import com.menuplanner.domain.WeatherRecord;
 import com.menuplanner.repository.WeatherRecordRepository;
+import com.menuplanner.security.AppUserDetails;
 import com.menuplanner.service.MealSuggestionService;
 import com.menuplanner.service.MenuEntryService;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -28,8 +31,9 @@ public class MealSuggestionController {
     }
 
     @PostMapping
-    public Map<String, String> suggestMeals(@RequestBody SuggestionRequest request) {
-        List<String> mealLibrary = menuEntryService.getMealNames();
+    public Map<String, String> suggestMeals(@RequestBody SuggestionRequest request,
+                                             @AuthenticationPrincipal AppUserDetails userDetails) {
+        List<String> mealLibrary = menuEntryService.getMealNames(userDetails.getHousehold());
         return suggestionService.suggestMeals(
                 request.weekStart(), request.prompt(), mealLibrary,
                 request.weather(), request.existingMeals(), request.targetDate()
@@ -45,8 +49,9 @@ public class MealSuggestionController {
     ) {}
 
     @PostMapping("/chat")
-    public Map<String, Object> chat(@RequestBody ChatRequest request) {
-        List<Map<String, Object>> history = buildHistory();
+    public Map<String, Object> chat(@RequestBody ChatRequest request,
+                                    @AuthenticationPrincipal AppUserDetails userDetails) {
+        List<Map<String, Object>> history = buildHistory(userDetails.getHousehold());
         return suggestionService.chat(
                 request.targetDate(), request.dayName(),
                 request.weather(), request.existingMeals(),
@@ -54,8 +59,8 @@ public class MealSuggestionController {
         );
     }
 
-    private List<Map<String, Object>> buildHistory() {
-        List<MenuEntry> pastMeals = menuEntryService.getPastMeals();
+    private List<Map<String, Object>> buildHistory(Household household) {
+        List<MenuEntry> pastMeals = menuEntryService.getPastMeals(household);
         List<LocalDate> dates = pastMeals.stream()
                 .map(MenuEntry::getMealDate)
                 .filter(Objects::nonNull)

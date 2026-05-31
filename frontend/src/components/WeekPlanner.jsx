@@ -3,6 +3,7 @@ import AiChatModal from './AiChatModal';
 import DayRow from './DayRow';
 import MealDetailModal from './MealDetailModal';
 import WeekHelper from './WeekHelper';
+import { authFetch } from '../utils/api';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -24,7 +25,7 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
 
         if (!mealName.trim()) {
             if (existing) {
-                fetch(`/api/menus/${existing.id}`, { method: 'DELETE' })
+                authFetch(`/api/menus/${existing.id}`, { method: 'DELETE' })
                     .then(() => setEntries(prev => prev.filter(e => e.mealDate !== dateStr)))
                     .catch(console.error);
             }
@@ -47,9 +48,8 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
         };
 
         if (existing) {
-            fetch(`/api/menus/${existing.id}`, {
+            authFetch(`/api/menus/${existing.id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
             })
                 .then(r => r.json())
@@ -59,9 +59,8 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
                 })
                 .catch(console.error);
         } else {
-            fetch('/api/menus', {
+            authFetch('/api/menus', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
             })
                 .then(r => r.json())
@@ -74,9 +73,8 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
     };
 
     const handleToggleConfirmed = (entry) => {
-        fetch(`/api/menus/${entry.id}/confirmed`, {
+        authFetch(`/api/menus/${entry.id}/confirmed`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ confirmed: !entry.confirmed }),
         })
             .then(r => r.json())

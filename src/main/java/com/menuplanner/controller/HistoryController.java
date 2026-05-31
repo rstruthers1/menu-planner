@@ -3,8 +3,10 @@ package com.menuplanner.controller;
 import com.menuplanner.domain.MenuEntry;
 import com.menuplanner.domain.WeatherRecord;
 import com.menuplanner.repository.WeatherRecordRepository;
+import com.menuplanner.security.AppUserDetails;
 import com.menuplanner.service.MenuEntryService;
 import com.menuplanner.service.WeatherService;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -30,8 +32,8 @@ public class HistoryController {
     }
 
     @GetMapping("/api/history")
-    public List<Map<String, Object>> getHistory() {
-        List<MenuEntry> pastMeals = menuEntryService.getPastMeals();
+    public List<Map<String, Object>> getHistory(@AuthenticationPrincipal AppUserDetails userDetails) {
+        List<MenuEntry> pastMeals = menuEntryService.getPastMeals(userDetails.getHousehold());
 
         List<LocalDate> dates = pastMeals.stream()
                 .map(MenuEntry::getMealDate)

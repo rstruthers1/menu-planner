@@ -4,6 +4,7 @@ import {
     ModalBody, ModalCloseButton, Button, Checkbox, FormControl, FormLabel,
     Input, Textarea, Stack, useToast, Collapse,
 } from '@chakra-ui/react';
+import { authFetch } from '../utils/api';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -43,9 +44,8 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
         const url = mode === 'edit' ? `/api/menus/${entry.id}` : '/api/menus';
         const method = mode === 'edit' ? 'PUT' : 'POST';
         try {
-            const r = await fetch(url, {
+            const r = await authFetch(url, {
                 method,
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
             });
             const saved = await r.json();

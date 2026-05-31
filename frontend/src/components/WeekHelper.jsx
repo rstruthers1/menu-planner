@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
     Box, Button, HStack, Spinner, Text, Textarea, VStack,
 } from '@chakra-ui/react';
+import { authFetch } from '../utils/api';
 
 function WeekHelper({ weekStart, weather, entries, toDateStr, onSuggestions }) {
     const [prompt, setPrompt] = useState('');
@@ -26,9 +27,8 @@ function WeekHelper({ weekStart, weather, entries, toDateStr, onSuggestions }) {
             if (e.mealName) existingMeals[e.mealDate] = e.mealName;
         });
 
-        fetch('/api/suggest-meals', {
+        authFetch('/api/suggest-meals', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 weekStart: toDateStr(weekStart),
                 prompt: prompt.trim(),

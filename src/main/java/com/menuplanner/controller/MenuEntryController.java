@@ -1,8 +1,11 @@
 package com.menuplanner.controller;
 
+import com.menuplanner.domain.Household;
 import com.menuplanner.domain.Meal;
 import com.menuplanner.domain.MenuEntry;
+import com.menuplanner.security.AppUserDetails;
 import com.menuplanner.service.MenuEntryService;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -22,24 +25,26 @@ public class MenuEntryController {
     }
 
     @GetMapping
-    public List<Map<String, Object>> getAllMenus() {
-        return service.getAllMenus().stream().map(this::toResponse).collect(Collectors.toList());
+    public List<Map<String, Object>> getAllMenus(@AuthenticationPrincipal AppUserDetails userDetails) {
+        return service.getAllMenus(userDetails.getHousehold()).stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @GetMapping("/week")
-    public List<Map<String, Object>> getMenusForWeek(@RequestParam String start) {
+    public List<Map<String, Object>> getMenusForWeek(@RequestParam String start,
+                                                      @AuthenticationPrincipal AppUserDetails userDetails) {
         LocalDate startDate = LocalDate.parse(start);
-        return service.getMenusForWeek(startDate, startDate.plusDays(6))
+        return service.getMenusForWeek(startDate, startDate.plusDays(6), userDetails.getHousehold())
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @GetMapping("/meal-names")
-    public List<String> getMealNames() {
-        return service.getMealNames();
+    public List<String> getMealNames(@AuthenticationPrincipal AppUserDetails userDetails) {
+        return service.getMealNames(userDetails.getHousehold());
     }
 
     @PostMapping
-    public Map<String, Object> addMenu(@RequestBody MenuEntryRequest req) {
+    public Map<String, Object> addMenu(@RequestBody MenuEntryRequest req,
+                                       @AuthenticationPrincipal AppUserDetails userDetails) {
         Meal meal = service.findOrCreateMeal(req.mealName(), req.recipeLink(), req.notes());
         MenuEntry entry = new MenuEntry();
         entry.setMealDate(req.mealDate() != null ? LocalDate.parse(req.mealDate()) : null);
@@ -49,11 +54,13 @@ public class MenuEntryController {
         entry.setLeftoverFromDate(req.leftoverFromDate() != null && !req.leftoverFromDate().isBlank()
                 ? LocalDate.parse(req.leftoverFromDate()) : null);
         entry.setMeal(meal);
+        entry.setHousehold(userDetails.getHousehold());
         return toResponse(service.saveMenu(entry));
     }
 
     @PutMapping("/{id}")
-    public Map<String, Object> updateMenu(@PathVariable Long id, @RequestBody MenuEntryRequest req) {
+    public Map<String, Object> updateMenu(@PathVariable Long id, @RequestBody MenuEntryRequest req,
+                                          @AuthenticationPrincipal AppUserDetails userDetails) {
         Meal meal = service.findOrCreateMeal(req.mealName(), req.recipeLink(), req.notes());
         MenuEntry updated = new MenuEntry();
         updated.setMeal(meal);

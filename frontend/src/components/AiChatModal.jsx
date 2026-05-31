@@ -3,6 +3,7 @@ import {
     Box, Button, HStack, Input, Modal, ModalBody, ModalCloseButton,
     ModalContent, ModalHeader, ModalOverlay, Spinner, Text, VStack,
 } from '@chakra-ui/react';
+import { authFetch } from '../utils/api';
 
 const INIT_PROMPT = 'Suggest some meal options for me.';
 
@@ -29,9 +30,8 @@ function AiChatModal({ isOpen, onClose, dateStr, dayName, weather, existingMeals
         setLoading(true);
         setTimeout(() => inputRef.current?.focus(), 50);
 
-        fetch('/api/suggest-meals/chat', {
+        authFetch('/api/suggest-meals/chat', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 targetDate: dateStr,
                 dayName,
@@ -74,9 +74,8 @@ function AiChatModal({ isOpen, onClose, dateStr, dayName, weather, existingMeals
         setLoading(true);
 
         try {
-            const r = await fetch('/api/suggest-meals/chat', {
+            const r = await authFetch('/api/suggest-meals/chat', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     targetDate: dateStr,
                     dayName,
