@@ -53,10 +53,25 @@ public class MealController {
         return toResponse(mealRepository.save(meal));
     }
 
+    @GetMapping("/{id}/debug")
+    public Map<String, Object> debugMeal(@PathVariable Long id,
+                                         @AuthenticationPrincipal AppUserDetails userDetails) {
+        Map<String, Object> info = new LinkedHashMap<>();
+        info.put("requestedMealId", id);
+        info.put("userHouseholdId", userDetails.getHousehold().getId());
+        mealRepository.findById(id).ifPresentOrElse(m -> {
+            info.put("mealFound", true);
+            info.put("mealName", m.getName());
+            info.put("mealHouseholdId", m.getHousehold() != null ? m.getHousehold().getId() : null);
+            info.put("mealShared", m.isShared());
+        }, () -> info.put("mealFound", false));
+        return info;
+    }
+
     @PutMapping("/{id}")
     public Map<String, Object> updateMeal(@PathVariable Long id, @RequestBody MealRequest req,
                                           @AuthenticationPrincipal AppUserDetails userDetails) {
-        Meal meal = mealRepository.findByIdAndHouseholdId(id, userDetails.getHousehold().getId())
+        Meal meal = mealRepository.findByIdForHousehold(id, userDetails.getHousehold().getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Meal not found or belongs to another household"));
         meal.setName(req.name().trim());
         applyRequest(meal, req);
@@ -66,7 +81,7 @@ public class MealController {
     @DeleteMapping("/{id}")
     public void deleteMeal(@PathVariable Long id,
                            @AuthenticationPrincipal AppUserDetails userDetails) {
-        Meal meal = mealRepository.findByIdAndHouseholdId(id, userDetails.getHousehold().getId())
+        Meal meal = mealRepository.findByIdForHousehold(id, userDetails.getHousehold().getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Meal not found or belongs to another household"));
         if (menuEntryRepository.existsByMeal(meal)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
