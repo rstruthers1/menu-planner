@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Box, Button, HStack, Input, Tag, TagCloseButton, TagLabel, Text, Wrap, WrapItem } from '@chakra-ui/react';
-import { useDraggable } from '@dnd-kit/core';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 
 function DraggableChip({ name, onRemove }) {
@@ -33,6 +33,7 @@ function DraggableChip({ name, onRemove }) {
 function CandidateTray({ candidates, setCandidates, mealSuggestions }) {
     const [isOpen, setIsOpen] = useState(true);
     const [input, setInput] = useState('');
+    const { setNodeRef: setTrayDropRef, isOver: isTrayOver } = useDroppable({ id: 'candidate-tray' });
 
     const addCandidate = (name) => {
         const trimmed = name.trim();
@@ -55,7 +56,12 @@ function CandidateTray({ candidates, setCandidates, mealSuggestions }) {
             </HStack>
 
             {isOpen && (
-                <Box p={4}>
+                <Box
+                    ref={setTrayDropRef}
+                    p={4}
+                    bg={isTrayOver ? 'purple.50' : undefined}
+                    transition="background 0.15s"
+                >
                     <Text fontSize="xs" color="gray.400" mb={3}>
                         {candidates.length === 0
                             ? 'Add meals below, then drag them onto a day.'

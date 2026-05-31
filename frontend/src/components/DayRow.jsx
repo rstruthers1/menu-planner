@@ -3,7 +3,7 @@ import {
     Box, Button, HStack, Input, Popover, PopoverBody, PopoverContent,
     PopoverTrigger, Text, VStack,
 } from '@chakra-ui/react';
-import { useDroppable } from '@dnd-kit/core';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 
 function weatherIcon(condition) {
     if (!condition) return '';
@@ -34,6 +34,10 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, onSav
     const listId = `suggestions-${dateStr}`;
     const isToday = dateStr === toLocalDateStr();
     const { setNodeRef: setDropRef, isOver } = useDroppable({ id: dateStr });
+    const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
+        id: `day:${dateStr}`,
+        disabled: !entry,
+    });
 
     useEffect(() => {
         setMealName(entry?.mealName || '');
@@ -73,8 +77,16 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, onSav
             bg={isOver ? 'purple.50' : isToday ? 'blue.50' : 'transparent'}
             borderRadius="md"
             transition="background 0.15s, border-color 0.15s"
+            opacity={isDragging ? 0.4 : 1}
         >
-            <Box minW="90px">
+            <Box
+                ref={setDragRef}
+                minW="90px"
+                cursor={entry ? 'grab' : 'default'}
+                userSelect="none"
+                {...(entry ? listeners : {})}
+                {...(entry ? attributes : {})}
+            >
                 <Text fontWeight="semibold" fontSize="sm" color={isToday ? 'blue.600' : 'gray.700'}>
                     {dayName.slice(0, 3)}
                 </Text>

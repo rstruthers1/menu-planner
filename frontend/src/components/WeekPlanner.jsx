@@ -168,12 +168,40 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
     const handleDragEnd = ({ active, over }) => {
         setActiveId(null);
         if (!over) return;
-        const mealName = active.id;
-        const dateStr = over.id;
-        const day = days.find(d => d.dateStr === dateStr);
-        if (!day) return;
-        handleSave(dateStr, day.dayName, mealName);
-        setCandidates(prev => prev.filter(c => c !== mealName));
+
+        const overId = over.id;
+
+        if (overId === 'candidate-tray') {
+            if (!active.id.startsWith('day:')) return;
+            const sourceDateStr = active.id.slice(4);
+            const sourceEntry = entriesByDate[sourceDateStr];
+            if (!sourceEntry?.mealName) return;
+            const sourceDay = days.find(d => d.dateStr === sourceDateStr);
+            setCandidates(prev => prev.includes(sourceEntry.mealName) ? prev : [...prev, sourceEntry.mealName]);
+            if (sourceDay) handleSave(sourceDateStr, sourceDay.dayName, '');
+            return;
+        }
+
+        const targetDay = days.find(d => d.dateStr === overId);
+        if (!targetDay) return;
+        const targetEntry = entriesByDate[overId];
+
+        if (active.id.startsWith('day:')) {
+            const sourceDateStr = active.id.slice(4);
+            if (sourceDateStr === overId) return;
+            const sourceEntry = entriesByDate[sourceDateStr];
+            if (!sourceEntry?.mealName) return;
+            const sourceDay = days.find(d => d.dateStr === sourceDateStr);
+            handleSave(overId, targetDay.dayName, sourceEntry.mealName);
+            if (sourceDay) handleSave(sourceDateStr, sourceDay.dayName, targetEntry?.mealName || '');
+        } else {
+            const mealName = active.id;
+            if (targetEntry?.mealName && targetEntry.mealName !== mealName) {
+                setCandidates(prev => prev.includes(targetEntry.mealName) ? prev : [...prev, targetEntry.mealName]);
+            }
+            handleSave(overId, targetDay.dayName, mealName);
+            setCandidates(prev => prev.filter(c => c !== mealName));
+        }
     };
 
     const handleSuggestions = (suggestions) => {
@@ -193,11 +221,16 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
             onDragCancel={() => setActiveId(null)}
         >
         <DragOverlay dropAnimation={null}>
-            {activeId ? (
-                <Tag size="md" colorScheme="purple" borderRadius="full" shadow="lg" cursor="grabbing" px={3} py={1}>
-                    <TagLabel>{activeId}</TagLabel>
-                </Tag>
-            ) : null}
+            {activeId ? (() => {
+                const label = activeId.startsWith('day:')
+                    ? entriesByDate[activeId.slice(4)]?.mealName
+                    : activeId;
+                return label ? (
+                    <Tag size="md" colorScheme="purple" borderRadius="full" shadow="lg" cursor="grabbing" px={3} py={1}>
+                        <TagLabel>{label}</TagLabel>
+                    </Tag>
+                ) : null;
+            })() : null}
         </DragOverlay>
         <div>
             <WeekHelper
