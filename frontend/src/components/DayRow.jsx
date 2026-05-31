@@ -26,7 +26,18 @@ function toLocalDateStr() {
     return `${y}-${m}-${day}`;
 }
 
-function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, onSave, onOpenAiChat, onOpenDetail, onToggleConfirmed }) {
+function tempWarning(mealName, mealLibrary, weather) {
+    if (!mealName || !weather || !mealLibrary) return null;
+    const meal = mealLibrary.find(m => m.name === mealName);
+    if (!meal) return null;
+    if (meal.maxTemp != null && weather.high > meal.maxTemp)
+        return `Too hot — forecast high ${weather.high}°, max for this meal ${meal.maxTemp}°`;
+    if (meal.minTemp != null && weather.high < meal.minTemp)
+        return `Too cold — forecast high ${weather.high}°, min for this meal ${meal.minTemp}°`;
+    return null;
+}
+
+function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealLibrary, onSave, onOpenAiChat, onOpenDetail, onToggleConfirmed }) {
     const [mealName, setMealName] = useState(entry?.mealName || '');
     const [pickerOpen, setPickerOpen] = useState(false);
     const [search, setSearch] = useState('');
@@ -117,6 +128,14 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, onSav
                             : 'leftovers'}
                     </Text>
                 )}
+                {(() => {
+                    const warn = tempWarning(entry?.mealName, mealLibrary, weather);
+                    return warn ? (
+                        <Text fontSize="xs" color="red.400" lineHeight="1.2" mt="1px" title={warn}>
+                            ⚠ {warn}
+                        </Text>
+                    ) : null;
+                })()}
             </Box>
 
             {/* Confirmed toggle */}
@@ -166,20 +185,25 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, onSav
                             {filtered.length === 0 && (
                                 <Text fontSize="xs" color="gray.400" px={2} py={1}>No meals found</Text>
                             )}
-                            {filtered.map(name => (
-                                <Box
-                                    key={name}
-                                    px={2}
-                                    py={1}
-                                    fontSize="sm"
-                                    cursor="pointer"
-                                    borderRadius="sm"
-                                    _hover={{ bg: 'gray.100' }}
-                                    onMouseDown={() => pickMeal(name)}
-                                >
-                                    {name}
-                                </Box>
-                            ))}
+                            {filtered.map(name => {
+                                const warn = tempWarning(name, mealLibrary, weather);
+                                return (
+                                    <Box
+                                        key={name}
+                                        px={2}
+                                        py={1}
+                                        fontSize="sm"
+                                        cursor="pointer"
+                                        borderRadius="sm"
+                                        color={warn ? 'gray.400' : undefined}
+                                        _hover={{ bg: 'gray.100' }}
+                                        onMouseDown={() => pickMeal(name)}
+                                        title={warn || undefined}
+                                    >
+                                        {warn ? '⚠ ' : ''}{name}
+                                    </Box>
+                                );
+                            })}
                         </VStack>
                     </PopoverBody>
                 </PopoverContent>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
     Alert, AlertDescription, AlertIcon, AlertTitle,
-    Box, Button, Checkbox, Collapse, FormControl, FormLabel,
+    Box, Button, Checkbox, Collapse, FormControl, FormHelperText, FormLabel,
     HStack, Input, Modal, ModalBody, ModalCloseButton, ModalContent,
     ModalFooter, ModalHeader, ModalOverlay, Stack, Textarea, useToast,
 } from '@chakra-ui/react';
@@ -11,7 +11,7 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 
 function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSaved }) {
     const [localDateStr, setLocalDateStr] = useState(dateStr || '');
-    const [form, setForm] = useState({ mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false });
+    const [form, setForm] = useState({ mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false, minTemp: '', maxTemp: '' });
     const [dupWarning, setDupWarning] = useState(null); // null | 'household' | 'shared'
     const toast = useToast();
 
@@ -20,8 +20,8 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
         setLocalDateStr(dateStr || '');
         setDupWarning(null);
         setForm(mode === 'edit' && entry
-            ? { mealName: entry.mealName || '', recipeLink: entry.recipeLink || '', notes: entry.notes || '', confirmed: entry.confirmed ?? false, leftover: entry.leftover ?? false, leftoverFromDate: entry.leftoverFromDate || '', shared: entry.shared ?? false }
-            : { mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false }
+            ? { mealName: entry.mealName || '', recipeLink: entry.recipeLink || '', notes: entry.notes || '', confirmed: entry.confirmed ?? false, leftover: entry.leftover ?? false, leftoverFromDate: entry.leftoverFromDate || '', shared: entry.shared ?? false, minTemp: entry.minTemp ?? '', maxTemp: entry.maxTemp ?? '' }
+            : { mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false, minTemp: '', maxTemp: '' }
         );
     }, [isOpen, entry, mode, dateStr]);
 
@@ -46,6 +46,8 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
             leftover: form.leftover,
             leftoverFromDate: form.leftover ? (form.leftoverFromDate || null) : null,
             shared: form.shared,
+            minTemp: form.minTemp !== '' ? Number(form.minTemp) : null,
+            maxTemp: form.maxTemp !== '' ? Number(form.maxTemp) : null,
         };
         const url = mode === 'edit' ? `/api/menus/${entry.id}` : '/api/menus';
         const method = mode === 'edit' ? 'PUT' : 'POST';
@@ -136,6 +138,33 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
                             <FormControl>
                                 <FormLabel>Notes</FormLabel>
                                 <Textarea name="notes" value={form.notes} onChange={handleChange} rows={2} resize="vertical" />
+                            </FormControl>
+                            <FormControl>
+                                <FormLabel fontSize="sm">Temperature Range (°F) — optional</FormLabel>
+                                <HStack>
+                                    <Box flex={1}>
+                                        <Input
+                                            type="number"
+                                            name="minTemp"
+                                            value={form.minTemp}
+                                            onChange={handleChange}
+                                            placeholder="Min"
+                                            size="sm"
+                                        />
+                                        <FormHelperText fontSize="xs" mt={1}>Too cold below</FormHelperText>
+                                    </Box>
+                                    <Box flex={1}>
+                                        <Input
+                                            type="number"
+                                            name="maxTemp"
+                                            value={form.maxTemp}
+                                            onChange={handleChange}
+                                            placeholder="Max"
+                                            size="sm"
+                                        />
+                                        <FormHelperText fontSize="xs" mt={1}>Too hot above</FormHelperText>
+                                    </Box>
+                                </HStack>
                             </FormControl>
                             <Checkbox
                                 isChecked={form.confirmed}

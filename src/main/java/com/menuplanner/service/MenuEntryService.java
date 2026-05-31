@@ -60,7 +60,13 @@ public class MenuEntryService {
         return mealRepository.findNamesForHousehold(household);
     }
 
-    public Meal findOrCreateMeal(String name, String recipeLink, String notes, boolean shared, Household household) {
+    public List<Meal> getMeals(Household household) {
+        return mealRepository.findMealsForHousehold(household);
+    }
+
+    public Meal findOrCreateMeal(String name, String recipeLink, String notes,
+                                  Integer minTemp, Integer maxTemp,
+                                  boolean shared, Household household) {
         if (name == null || name.isBlank()) return null;
         String trimmed = name.trim();
 
@@ -70,6 +76,8 @@ public class MenuEntryService {
             Meal m = householdMeal.get();
             m.setRecipeLink(recipeLink);
             m.setNotes(notes);
+            m.setMinTemp(minTemp);
+            m.setMaxTemp(maxTemp);
             m.setShared(shared);
             return mealRepository.save(m);
         }
@@ -85,6 +93,8 @@ public class MenuEntryService {
         m.setName(trimmed);
         m.setRecipeLink(recipeLink);
         m.setNotes(notes);
+        m.setMinTemp(minTemp);
+        m.setMaxTemp(maxTemp);
         m.setHousehold(household);
         m.setShared(shared);
         return mealRepository.save(m);

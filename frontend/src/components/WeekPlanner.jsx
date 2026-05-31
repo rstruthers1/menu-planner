@@ -14,7 +14,8 @@ import { authFetch } from '../utils/api';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions, setMealSuggestions, toDateStr }) {
+function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, setMealLibrary, toDateStr }) {
+    const mealSuggestions = [...new Set(mealLibrary.map(m => m.name))].sort();
     const [detailDay, setDetailDay] = useState(null);
     const [aiChatDay, setAiChatDay] = useState(null);
     const [candidates, setCandidates] = useState([]);
@@ -57,9 +58,14 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
             leftoverFromDate: existing?.leftoverFromDate ?? null,
         };
 
-        const addSuggestion = (name) => {
-            if (!mealSuggestions.includes(name)) {
-                setMealSuggestions(prev => [...prev, name].sort());
+        const addSuggestion = (updated) => {
+            if (updated?.mealName && !mealLibrary.some(m => m.name === updated.mealName)) {
+                setMealLibrary(prev => [...prev, {
+                    id: updated.mealId,
+                    name: updated.mealName,
+                    minTemp: updated.minTemp ?? null,
+                    maxTemp: updated.maxTemp ?? null,
+                }].sort((a, b) => a.name.localeCompare(b.name)));
             }
         };
 
@@ -71,7 +77,7 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
                 .then(r => r.json())
                 .then(updated => {
                     setEntries(prev => prev.map(e => e.id === updated.id ? updated : e));
-                    addSuggestion(updated.mealName);
+                    addSuggestion(updated);
                 })
                 .catch(console.error);
         } else {
@@ -82,7 +88,7 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
                 .then(r => r.json())
                 .then(created => {
                     setEntries(prev => [...prev, created]);
-                    addSuggestion(created.mealName);
+                    addSuggestion(created);
                 })
                 .catch(console.error);
         }
@@ -254,6 +260,7 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
                     entry={entriesByDate[dateStr]}
                     weather={weather[dateStr]}
                     mealSuggestions={mealSuggestions}
+                    mealLibrary={mealLibrary}
                     onSave={handleSave}
                     onToggleConfirmed={handleToggleConfirmed}
                     onOpenDetail={(mode) => setDetailDay({ dateStr, dayName, entry: entriesByDate[dateStr], mode })}
@@ -283,8 +290,9 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
             isOpen={isAddMealOpen}
             onClose={onAddMealClose}
             onAdded={(saved) => {
-                if (saved.name && !mealSuggestions.includes(saved.name)) {
-                    setMealSuggestions(prev => [...prev, saved.name].sort());
+                if (saved.name && !mealLibrary.some(m => m.name === saved.name)) {
+                    setMealLibrary(prev => [...prev, { id: saved.id, name: saved.name, minTemp: saved.minTemp ?? null, maxTemp: saved.maxTemp ?? null }]
+                        .sort((a, b) => a.name.localeCompare(b.name)));
                 }
             }}
         />
@@ -314,9 +322,6 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
                 weekStart={toDateStr(weekStart)}
                 onSelect={(mealName) => {
                     handleSave(aiChatDay.dateStr, aiChatDay.dayName, mealName);
-                    if (!mealSuggestions.includes(mealName)) {
-                        setMealSuggestions(prev => [...prev, mealName].sort());
-                    }
                 }}
             />
         )}
@@ -335,8 +340,13 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
                             ? prev.map(e => e.id === saved.id ? saved : e)
                             : [...prev, saved];
                     });
-                    if (saved.mealName && !mealSuggestions.includes(saved.mealName)) {
-                        setMealSuggestions(prev => [...prev, saved.mealName].sort());
+                    if (saved.mealName && !mealLibrary.some(m => m.name === saved.mealName)) {
+                        setMealLibrary(prev => [...prev, { id: saved.mealId, name: saved.mealName, minTemp: saved.minTemp ?? null, maxTemp: saved.maxTemp ?? null }]
+                            .sort((a, b) => a.name.localeCompare(b.name)));
+                    } else if (saved.mealName) {
+                        setMealLibrary(prev => prev.map(m => m.name === saved.mealName
+                            ? { ...m, minTemp: saved.minTemp ?? null, maxTemp: saved.maxTemp ?? null }
+                            : m));
                     }
                 }}
             />

@@ -22,4 +22,7 @@ public class Meal {
 
     @Column(columnDefinition = "boolean not null default false")
     private boolean shared = false;
+
+    private Integer minTemp;
+    private Integer maxTemp;
 }

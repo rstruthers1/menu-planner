@@ -28,7 +28,7 @@ function App() {
     const [weekStart, setWeekStart] = useState(() => getSundayOfWeek(new Date()));
     const [historyKey, setHistoryKey] = useState(0);
     const [entries, setEntries] = useState([]);
-    const [mealSuggestions, setMealSuggestions] = useState([]);
+    const [mealLibrary, setMealLibrary] = useState([]); // [{id, name, minTemp, maxTemp}]
     const [weather, setWeather] = useState({});
 
     // Validate stored token on mount
@@ -52,9 +52,9 @@ function App() {
 
     useEffect(() => {
         if (!currentUser) return;
-        authFetch('/api/menus/meal-names')
+        authFetch('/api/meals')
             .then(r => r.json())
-            .then(setMealSuggestions)
+            .then(setMealLibrary)
             .catch(console.error);
     }, [currentUser]);
 
@@ -88,7 +88,7 @@ function App() {
         localStorage.removeItem('token');
         setCurrentUser(null);
         setEntries([]);
-        setMealSuggestions([]);
+        setMealLibrary([]);
         setWeather({});
     };
 
@@ -134,8 +134,8 @@ function App() {
                             entries={entries}
                             setEntries={setEntries}
                             weather={weather}
-                            mealSuggestions={mealSuggestions}
-                            setMealSuggestions={setMealSuggestions}
+                            mealLibrary={mealLibrary}
+                            setMealLibrary={setMealLibrary}
                             toDateStr={toDateStr}
                         />
                     </TabPanel>

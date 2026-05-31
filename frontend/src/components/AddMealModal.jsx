@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react';
 import {
     Alert, AlertDescription, AlertIcon, AlertTitle,
-    Box, Button, Checkbox, FormControl, FormLabel,
+    Box, Button, Checkbox, FormControl, FormHelperText, FormLabel,
     HStack, Input, Modal, ModalBody, ModalCloseButton, ModalContent,
     ModalFooter, ModalHeader, ModalOverlay, Stack, Textarea, useToast,
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 
 function AddMealModal({ isOpen, onClose, onAdded }) {
-    const [form, setForm] = useState({ name: '', recipeLink: '', notes: '', shared: false });
+    const [form, setForm] = useState({ name: '', recipeLink: '', notes: '', shared: false, minTemp: '', maxTemp: '' });
     const [dupWarning, setDupWarning] = useState(null);
     const [loading, setLoading] = useState(false);
     const toast = useToast();
 
     useEffect(() => {
         if (!isOpen) return;
-        setForm({ name: '', recipeLink: '', notes: '', shared: false });
+        setForm({ name: '', recipeLink: '', notes: '', shared: false, minTemp: '', maxTemp: '' });
         setDupWarning(null);
     }, [isOpen]);
 
@@ -29,7 +29,11 @@ function AddMealModal({ isOpen, onClose, onAdded }) {
         try {
             const r = await authFetch('/api/meals', {
                 method: 'POST',
-                body: JSON.stringify(form),
+                body: JSON.stringify({
+                    ...form,
+                    minTemp: form.minTemp !== '' ? Number(form.minTemp) : null,
+                    maxTemp: form.maxTemp !== '' ? Number(form.maxTemp) : null,
+                }),
             });
             const saved = await r.json();
             setDupWarning(null);
@@ -93,6 +97,33 @@ function AddMealModal({ isOpen, onClose, onAdded }) {
                             <FormControl>
                                 <FormLabel>Notes</FormLabel>
                                 <Textarea name="notes" value={form.notes} onChange={handleChange} rows={2} resize="vertical" />
+                            </FormControl>
+                            <FormControl>
+                                <FormLabel fontSize="sm">Temperature Range (°F) — optional</FormLabel>
+                                <HStack>
+                                    <Box flex={1}>
+                                        <Input
+                                            type="number"
+                                            name="minTemp"
+                                            value={form.minTemp}
+                                            onChange={handleChange}
+                                            placeholder="Min"
+                                            size="sm"
+                                        />
+                                        <FormHelperText fontSize="xs" mt={1}>Too cold below</FormHelperText>
+                                    </Box>
+                                    <Box flex={1}>
+                                        <Input
+                                            type="number"
+                                            name="maxTemp"
+                                            value={form.maxTemp}
+                                            onChange={handleChange}
+                                            placeholder="Max"
+                                            size="sm"
+                                        />
+                                        <FormHelperText fontSize="xs" mt={1}>Too hot above</FormHelperText>
+                                    </Box>
+                                </HStack>
                             </FormControl>
                             <Checkbox
                                 isChecked={form.shared}
