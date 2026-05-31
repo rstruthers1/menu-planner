@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react';
 import {
     AlertDialog, AlertDialogBody, AlertDialogContent, AlertDialogFooter,
-    AlertDialogHeader, AlertDialogOverlay, Button, HStack, useDisclosure,
+    AlertDialogHeader, AlertDialogOverlay, Button, HStack, Tag, TagLabel, useDisclosure,
 } from '@chakra-ui/react';
+import { closestCenter, DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import AddMealModal from './AddMealModal';
 import AiChatModal from './AiChatModal';
+import CandidateTray from './CandidateTray';
 import DayRow from './DayRow';
 import MealDetailModal from './MealDetailModal';
 import WeekHelper from './WeekHelper';
@@ -15,9 +17,15 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions, setMealSuggestions, toDateStr }) {
     const [detailDay, setDetailDay] = useState(null);
     const [aiChatDay, setAiChatDay] = useState(null);
+    const [candidates, setCandidates] = useState([]);
+    const [activeId, setActiveId] = useState(null);
     const { isOpen: isAlertOpen, onOpen: onAlertOpen, onClose: onAlertClose } = useDisclosure();
     const { isOpen: isAddMealOpen, onOpen: onAddMealOpen, onClose: onAddMealClose } = useDisclosure();
     const cancelRef = useRef();
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    );
 
     const days = Array.from({ length: 7 }, (_, i) => {
         const d = new Date(weekStart);
@@ -157,6 +165,17 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
         win.print();
     };
 
+    const handleDragEnd = ({ active, over }) => {
+        setActiveId(null);
+        if (!over) return;
+        const mealName = active.id;
+        const dateStr = over.id;
+        const day = days.find(d => d.dateStr === dateStr);
+        if (!day) return;
+        handleSave(dateStr, day.dayName, mealName);
+        setCandidates(prev => prev.filter(c => c !== mealName));
+    };
+
     const handleSuggestions = (suggestions) => {
         Object.entries(suggestions).forEach(([dateStr, mealName]) => {
             const day = days.find(d => d.dateStr === dateStr);
@@ -166,6 +185,20 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
 
     return (
         <>
+        <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={({ active }) => setActiveId(active.id)}
+            onDragEnd={handleDragEnd}
+            onDragCancel={() => setActiveId(null)}
+        >
+        <DragOverlay dropAnimation={null}>
+            {activeId ? (
+                <Tag size="md" colorScheme="purple" borderRadius="full" shadow="lg" cursor="grabbing" px={3} py={1}>
+                    <TagLabel>{activeId}</TagLabel>
+                </Tag>
+            ) : null}
+        </DragOverlay>
         <div>
             <WeekHelper
                 weekStart={weekStart}
@@ -173,6 +206,11 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
                 entries={entries}
                 toDateStr={toDateStr}
                 onSuggestions={handleSuggestions}
+            />
+            <CandidateTray
+                candidates={candidates}
+                setCandidates={setCandidates}
+                mealSuggestions={mealSuggestions}
             />
             {days.map(({ date, dateStr, dayName }) => (
                 <DayRow
@@ -207,6 +245,7 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
                 )}
             </HStack>
         </div>
+        </DndContext>
         <AddMealModal
             isOpen={isAddMealOpen}
             onClose={onAddMealClose}
