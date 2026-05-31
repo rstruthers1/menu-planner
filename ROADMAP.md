@@ -17,6 +17,18 @@
 - Duplicate meal names allowed across households; inline warning + choice in detail modal
 - Household name shown as subtitle in app header
 
+## Phase 2.5 — Meal Planning UX ✅ done
+- **Candidate tray** — collapsible panel above the week; add meals then drag chips onto days
+- **Drag-and-drop within the week** — grab a day's name label to move or swap meals between days; drag back to tray to unplan
+- **Temperature constraints** — optional min/max °F on each meal; red warning when day's forecast violates the range
+- **Season restrictions** — optional Spring/Summer/Fall/Winter checkboxes per meal; warns when planned out of season
+- **Meal picker** dims incompatible meals (temp or season) for the day being planned
+- **Print week** — opens a clean printable HTML summary with meals and weather
+- **Clear this week** — bulk delete with confirmation dialog
+- **AI week suggestions** work without typing (default prompt uses weather + history)
+- **Add meal to library** without selecting a day (+ Add to meal library button)
+- **Recipe link preserved** — inline saves no longer overwrite library metadata
+
 ## Phase 3 — Household Invite Flow
 - Currently `register` auto-assigns to the first household (fine for one household)
 - Proper invite codes: one person creates household, shares code, others join
