@@ -8,6 +8,18 @@ import { authFetch } from '../utils/api';
 const SEASON_LABELS = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall', WINTER: 'Winter' };
 const SEASON_COLORS = { SPRING: 'green', SUMMER: 'orange', FALL: 'yellow', WINTER: 'blue' };
 
+function tempLabel(minTemp, maxTemp) {
+    if (minTemp != null && maxTemp != null) return `${minTemp}°–${maxTemp}°F`;
+    if (minTemp != null) return `min ${minTemp}°F`;
+    if (maxTemp != null) return `max ${maxTemp}°F`;
+    return null;
+}
+
+function linkDomain(url) {
+    try { return new URL(url).hostname.replace(/^www\./, ''); }
+    catch { return 'Recipe'; }
+}
+
 function MealLibrary({ mealLibrary, setMealLibrary }) {
     const [search, setSearch] = useState('');
     const [editMeal, setEditMeal] = useState(null);
@@ -85,28 +97,31 @@ function MealLibrary({ mealLibrary, setMealLibrary }) {
                     >
                         <HStack justify="space-between" align="flex-start">
                             <Box flex={1} minW={0}>
-                                <HStack spacing={2} flexWrap="wrap">
+                                <HStack spacing={2} align="center">
                                     <Text fontWeight="semibold" fontSize="sm">{meal.name}</Text>
                                     {meal.shared && <Badge colorScheme="blue" fontSize="10px">shared</Badge>}
-                                    {meal.seasons && meal.seasons.map(s => (
-                                        <Badge key={s} colorScheme={SEASON_COLORS[s]} fontSize="10px" variant="subtle">
-                                            {SEASON_LABELS[s]}
-                                        </Badge>
-                                    ))}
-                                    {(meal.minTemp != null || meal.maxTemp != null) && (
-                                        <Badge colorScheme="gray" fontSize="10px" variant="subtle">
-                                            {meal.minTemp != null ? `${meal.minTemp}°–` : '–'}
-                                            {meal.maxTemp != null ? `${meal.maxTemp}°F` : ''}
-                                        </Badge>
+                                    {meal.recipeLink && (
+                                        <Link href={meal.recipeLink} isExternal fontSize="xs" color="blue.400" flexShrink={0}>
+                                            🔗 {linkDomain(meal.recipeLink)}
+                                        </Link>
                                     )}
                                 </HStack>
-                                {meal.recipeLink && (
-                                    <Link href={meal.recipeLink} isExternal fontSize="xs" color="blue.500" isTruncated display="block" mt="2px">
-                                        {meal.recipeLink}
-                                    </Link>
+                                {(meal.seasons?.length > 0 || meal.minTemp != null || meal.maxTemp != null) && (
+                                    <HStack spacing={2} mt="3px" flexWrap="wrap">
+                                        {meal.seasons?.map(s => (
+                                            <Badge key={s} colorScheme={SEASON_COLORS[s]} fontSize="10px" variant="subtle">
+                                                {SEASON_LABELS[s]}
+                                            </Badge>
+                                        ))}
+                                        {(meal.minTemp != null || meal.maxTemp != null) && (
+                                            <Badge colorScheme="gray" fontSize="10px" variant="outline">
+                                                🌡 {tempLabel(meal.minTemp, meal.maxTemp)}
+                                            </Badge>
+                                        )}
+                                    </HStack>
                                 )}
                                 {meal.notes && (
-                                    <Text fontSize="xs" color="gray.500" mt="2px" noOfLines={1}>{meal.notes}</Text>
+                                    <Text fontSize="xs" color="gray.400" mt="2px" noOfLines={1}>{meal.notes}</Text>
                                 )}
                             </Box>
                             <HStack spacing={1} flexShrink={0}>
