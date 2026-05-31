@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
-    Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter,
-    ModalBody, ModalCloseButton, Button, Checkbox, FormControl, FormLabel,
-    Input, Textarea, Stack, useToast, Collapse,
+    Alert, AlertDescription, AlertIcon, AlertTitle,
+    Box, Button, Checkbox, Collapse, FormControl, FormLabel,
+    HStack, Input, Modal, ModalBody, ModalCloseButton, ModalContent,
+    ModalFooter, ModalHeader, ModalOverlay, Stack, Textarea, useToast,
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 
@@ -11,23 +12,27 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSaved }) {
     const [localDateStr, setLocalDateStr] = useState(dateStr || '');
     const [form, setForm] = useState({ mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false });
+    const [dupWarning, setDupWarning] = useState(null); // null | 'household' | 'shared'
     const toast = useToast();
 
     useEffect(() => {
         if (!isOpen) return;
         setLocalDateStr(dateStr || '');
+        setDupWarning(null);
         setForm(mode === 'edit' && entry
             ? { mealName: entry.mealName || '', recipeLink: entry.recipeLink || '', notes: entry.notes || '', confirmed: entry.confirmed ?? false, leftover: entry.leftover ?? false, leftoverFromDate: entry.leftoverFromDate || '', shared: entry.shared ?? false }
             : { mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false }
         );
     }, [isOpen, entry, mode, dateStr]);
 
-    const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+    const handleChange = (e) => {
+        if (e.target.name === 'mealName') setDupWarning(null);
+        setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+    };
 
     const effectiveDateStr = mode === 'add' ? localDateStr : dateStr;
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const doSave = async () => {
         const effectiveDayName = mode === 'add' && localDateStr
             ? DAY_NAMES[new Date(localDateStr + 'T00:00:00').getDay()]
             : dayName;
@@ -44,32 +49,31 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
         };
         const url = mode === 'edit' ? `/api/menus/${entry.id}` : '/api/menus';
         const method = mode === 'edit' ? 'PUT' : 'POST';
-
-        // Warn (but don't block) if the name already exists
-        const nameChanged = !(mode === 'edit' && entry?.mealName === form.mealName.trim());
-        if (nameChanged && form.mealName.trim()) {
-            try {
-                const check = await authFetch(`/api/meals/check?name=${encodeURIComponent(form.mealName.trim())}`);
-                const { existsInHousehold, existsShared } = await check.json();
-                if (existsInHousehold) {
-                    toast({ title: `"${form.mealName.trim()}" already exists in your household`, status: 'warning', duration: 4000, isClosable: true });
-                } else if (existsShared) {
-                    toast({ title: `"${form.mealName.trim()}" exists in the shared library`, status: 'info', duration: 4000, isClosable: true });
-                }
-            } catch { /* ignore check errors, proceed with save */ }
-        }
-
         try {
-            const r = await authFetch(url, {
-                method,
-                body: JSON.stringify(body),
-            });
+            const r = await authFetch(url, { method, body: JSON.stringify(body) });
             const saved = await r.json();
+            setDupWarning(null);
             onSaved(saved);
             onClose();
         } catch {
             toast({ title: 'Save failed', status: 'error', duration: 3000, isClosable: true });
         }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        const nameChanged = !(mode === 'edit' && entry?.mealName === form.mealName.trim());
+        if (nameChanged && form.mealName.trim()) {
+            try {
+                const check = await authFetch(`/api/meals/check?name=${encodeURIComponent(form.mealName.trim())}`);
+                const { existsInHousehold, existsShared } = await check.json();
+                if (existsInHousehold) { setDupWarning('household'); return; }
+                if (existsShared) { setDupWarning('shared'); return; }
+            } catch { /* ignore, proceed */ }
+        }
+
+        await doSave();
     };
 
     const displayDate = dateStr
@@ -101,6 +105,30 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
                                 <FormLabel>Meal Name</FormLabel>
                                 <Input name="mealName" value={form.mealName} onChange={handleChange} autoFocus />
                             </FormControl>
+
+                            {dupWarning && (
+                                <Alert status="warning" borderRadius="md" flexDirection="column" alignItems="flex-start">
+                                    <HStack mb={1}>
+                                        <AlertIcon />
+                                        <AlertTitle fontSize="sm">"{form.mealName}" already exists</AlertTitle>
+                                    </HStack>
+                                    <AlertDescription fontSize="xs" ml={6} mb={3}>
+                                        {dupWarning === 'household'
+                                            ? 'This name is already in your household\'s meal library.'
+                                            : 'This name exists in the shared meal library.'}
+                                        {' '}Would you like to change the name, or save it as a duplicate?
+                                    </AlertDescription>
+                                    <HStack ml={6} spacing={2}>
+                                        <Button size="xs" variant="outline" onClick={() => setDupWarning(null)}>
+                                            Change name
+                                        </Button>
+                                        <Button size="xs" colorScheme="orange" onClick={doSave}>
+                                            Save as duplicate
+                                        </Button>
+                                    </HStack>
+                                </Alert>
+                            )}
+
                             <FormControl>
                                 <FormLabel>Recipe Link</FormLabel>
                                 <Input name="recipeLink" value={form.recipeLink} onChange={handleChange} placeholder="https://…" />
