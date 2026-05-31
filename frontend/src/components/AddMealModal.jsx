@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react';
 import {
     Alert, AlertDescription, AlertIcon, AlertTitle,
-    Box, Button, Checkbox, FormControl, FormHelperText, FormLabel,
+    Box, Button, Checkbox, CheckboxGroup, FormControl, FormHelperText, FormLabel,
     HStack, Input, Modal, ModalBody, ModalCloseButton, ModalContent,
-    ModalFooter, ModalHeader, ModalOverlay, Stack, Textarea, useToast,
+    ModalFooter, ModalHeader, ModalOverlay, Stack, Textarea, Text, useToast,
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 
 function AddMealModal({ isOpen, onClose, onAdded }) {
-    const [form, setForm] = useState({ name: '', recipeLink: '', notes: '', shared: false, minTemp: '', maxTemp: '' });
+    const [form, setForm] = useState({ name: '', recipeLink: '', notes: '', shared: false, minTemp: '', maxTemp: '', seasons: [] });
     const [dupWarning, setDupWarning] = useState(null);
     const [loading, setLoading] = useState(false);
     const toast = useToast();
 
     useEffect(() => {
         if (!isOpen) return;
-        setForm({ name: '', recipeLink: '', notes: '', shared: false, minTemp: '', maxTemp: '' });
+        setForm({ name: '', recipeLink: '', notes: '', shared: false, minTemp: '', maxTemp: '', seasons: [] });
         setDupWarning(null);
     }, [isOpen]);
 
@@ -33,6 +33,7 @@ function AddMealModal({ isOpen, onClose, onAdded }) {
                     ...form,
                     minTemp: form.minTemp !== '' ? Number(form.minTemp) : null,
                     maxTemp: form.maxTemp !== '' ? Number(form.maxTemp) : null,
+                    seasons: form.seasons,
                 }),
             });
             const saved = await r.json();
@@ -124,6 +125,22 @@ function AddMealModal({ isOpen, onClose, onAdded }) {
                                         <FormHelperText fontSize="xs" mt={1}>Too hot above</FormHelperText>
                                     </Box>
                                 </HStack>
+                            </FormControl>
+                            <FormControl>
+                                <FormLabel fontSize="sm">Suitable seasons — optional</FormLabel>
+                                <Text fontSize="xs" color="gray.500" mb={2}>Leave all unchecked for no restriction.</Text>
+                                <CheckboxGroup
+                                    value={form.seasons}
+                                    onChange={val => setForm(f => ({ ...f, seasons: val }))}
+                                    colorScheme="teal"
+                                >
+                                    <HStack spacing={4}>
+                                        <Checkbox value="SPRING">Spring</Checkbox>
+                                        <Checkbox value="SUMMER">Summer</Checkbox>
+                                        <Checkbox value="FALL">Fall</Checkbox>
+                                        <Checkbox value="WINTER">Winter</Checkbox>
+                                    </HStack>
+                                </CheckboxGroup>
                             </FormControl>
                             <Checkbox
                                 isChecked={form.shared}

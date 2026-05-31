@@ -61,8 +61,9 @@ public class HouseholdSeeder implements CommandLineRunner {
         // Drop global unique constraint on meal name — duplicate names across households are allowed
         jdbc.execute("ALTER TABLE meal DROP CONSTRAINT IF EXISTS meal_name_unique");
 
-        // Add optional temperature range columns
+        // Add optional temperature range and season columns
         jdbc.execute("ALTER TABLE meal ADD COLUMN IF NOT EXISTS min_temp int");
         jdbc.execute("ALTER TABLE meal ADD COLUMN IF NOT EXISTS max_temp int");
+        jdbc.execute("ALTER TABLE meal ADD COLUMN IF NOT EXISTS seasons varchar(50)");
     }
 }

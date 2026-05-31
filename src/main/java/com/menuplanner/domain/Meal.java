@@ -25,4 +25,7 @@ public class Meal {
 
     private Integer minTemp;
     private Integer maxTemp;
+
+    @Column(length = 50)
+    private String seasons; // comma-separated: SPRING,SUMMER,FALL,WINTER; null = unrestricted
 }

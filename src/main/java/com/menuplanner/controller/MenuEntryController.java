@@ -9,6 +9,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +48,7 @@ public class MenuEntryController {
                                        @AuthenticationPrincipal AppUserDetails userDetails) {
         Household household = userDetails.getHousehold();
         boolean shared = Boolean.TRUE.equals(req.shared());
-        Meal meal = service.findOrCreateMeal(req.mealName(), req.recipeLink(), req.notes(), req.minTemp(), req.maxTemp(), shared, household);
+        Meal meal = service.findOrCreateMeal(req.mealName(), req.recipeLink(), req.notes(), req.minTemp(), req.maxTemp(), req.seasons(), shared, household);
         MenuEntry entry = new MenuEntry();
         entry.setMealDate(req.mealDate() != null ? LocalDate.parse(req.mealDate()) : null);
         entry.setDayOfWeek(req.dayOfWeek());
@@ -65,7 +66,7 @@ public class MenuEntryController {
                                           @AuthenticationPrincipal AppUserDetails userDetails) {
         Household household = userDetails.getHousehold();
         boolean shared = Boolean.TRUE.equals(req.shared());
-        Meal meal = service.findOrCreateMeal(req.mealName(), req.recipeLink(), req.notes(), req.minTemp(), req.maxTemp(), shared, household);
+        Meal meal = service.findOrCreateMeal(req.mealName(), req.recipeLink(), req.notes(), req.minTemp(), req.maxTemp(), req.seasons(), shared, household);
         MenuEntry updated = new MenuEntry();
         updated.setMeal(meal);
         updated.setConfirmed(req.confirmed());
@@ -99,6 +100,9 @@ public class MenuEntryController {
         m.put("shared", meal != null && meal.isShared());
         m.put("minTemp", meal != null ? meal.getMinTemp() : null);
         m.put("maxTemp", meal != null ? meal.getMaxTemp() : null);
+        m.put("seasons", meal != null && meal.getSeasons() != null
+                ? Arrays.stream(meal.getSeasons().split(",")).filter(s -> !s.isBlank()).collect(Collectors.toList())
+                : List.of());
         m.put("leftover", entry.getLeftover());
         m.put("leftoverFromDate", entry.getLeftoverFromDate() != null ? entry.getLeftoverFromDate().toString() : null);
         return m;
@@ -108,6 +112,6 @@ public class MenuEntryController {
             String mealDate, String dayOfWeek, String mealName,
             String recipeLink, String notes, Boolean confirmed,
             Boolean leftover, String leftoverFromDate, Boolean shared,
-            Integer minTemp, Integer maxTemp
+            Integer minTemp, Integer maxTemp, List<String> seasons
     ) {}
 }

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class MenuEntryService {
@@ -65,10 +66,12 @@ public class MenuEntryService {
     }
 
     public Meal findOrCreateMeal(String name, String recipeLink, String notes,
-                                  Integer minTemp, Integer maxTemp,
+                                  Integer minTemp, Integer maxTemp, List<String> seasons,
                                   boolean shared, Household household) {
         if (name == null || name.isBlank()) return null;
         String trimmed = name.trim();
+        String seasonsStr = seasons == null || seasons.isEmpty() ? null
+                : seasons.stream().filter(s -> s != null && !s.isBlank()).collect(Collectors.joining(","));
 
         // Existing meal in this household — update and return
         var householdMeal = mealRepository.findByNameAndHousehold(trimmed, household);
@@ -78,6 +81,7 @@ public class MenuEntryService {
             m.setNotes(notes);
             m.setMinTemp(minTemp);
             m.setMaxTemp(maxTemp);
+            m.setSeasons(seasonsStr);
             m.setShared(shared);
             return mealRepository.save(m);
         }
@@ -95,6 +99,7 @@ public class MenuEntryService {
         m.setNotes(notes);
         m.setMinTemp(minTemp);
         m.setMaxTemp(maxTemp);
+        m.setSeasons(seasonsStr);
         m.setHousehold(household);
         m.setShared(shared);
         return mealRepository.save(m);

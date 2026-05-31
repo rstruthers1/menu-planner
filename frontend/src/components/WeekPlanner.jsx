@@ -65,6 +65,7 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
                     name: updated.mealName,
                     minTemp: updated.minTemp ?? null,
                     maxTemp: updated.maxTemp ?? null,
+                    seasons: updated.seasons || [],
                 }].sort((a, b) => a.name.localeCompare(b.name)));
             }
         };
@@ -291,7 +292,7 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
             onClose={onAddMealClose}
             onAdded={(saved) => {
                 if (saved.name && !mealLibrary.some(m => m.name === saved.name)) {
-                    setMealLibrary(prev => [...prev, { id: saved.id, name: saved.name, minTemp: saved.minTemp ?? null, maxTemp: saved.maxTemp ?? null }]
+                    setMealLibrary(prev => [...prev, { id: saved.id, name: saved.name, minTemp: saved.minTemp ?? null, maxTemp: saved.maxTemp ?? null, seasons: saved.seasons || [] }]
                         .sort((a, b) => a.name.localeCompare(b.name)));
                 }
             }}
@@ -341,11 +342,11 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
                             : [...prev, saved];
                     });
                     if (saved.mealName && !mealLibrary.some(m => m.name === saved.mealName)) {
-                        setMealLibrary(prev => [...prev, { id: saved.mealId, name: saved.mealName, minTemp: saved.minTemp ?? null, maxTemp: saved.maxTemp ?? null }]
+                        setMealLibrary(prev => [...prev, { id: saved.mealId, name: saved.mealName, minTemp: saved.minTemp ?? null, maxTemp: saved.maxTemp ?? null, seasons: saved.seasons || [] }]
                             .sort((a, b) => a.name.localeCompare(b.name)));
                     } else if (saved.mealName) {
                         setMealLibrary(prev => prev.map(m => m.name === saved.mealName
-                            ? { ...m, minTemp: saved.minTemp ?? null, maxTemp: saved.maxTemp ?? null }
+                            ? { ...m, minTemp: saved.minTemp ?? null, maxTemp: saved.maxTemp ?? null, seasons: saved.seasons || [] }
                             : m));
                     }
                 }}

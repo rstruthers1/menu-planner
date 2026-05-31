@@ -26,14 +26,33 @@ function toLocalDateStr() {
     return `${y}-${m}-${day}`;
 }
 
-function tempWarning(mealName, mealLibrary, weather) {
-    if (!mealName || !weather || !mealLibrary) return null;
+const SEASON_LABELS = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall', WINTER: 'Winter' };
+
+function getSeason(dateStr) {
+    const m = new Date(dateStr + 'T00:00:00').getMonth() + 1;
+    if (m >= 3 && m <= 5) return 'SPRING';
+    if (m >= 6 && m <= 8) return 'SUMMER';
+    if (m >= 9 && m <= 11) return 'FALL';
+    return 'WINTER';
+}
+
+function getMealWarning(mealName, mealLibrary, weather, dateStr) {
+    if (!mealName || !mealLibrary) return null;
     const meal = mealLibrary.find(m => m.name === mealName);
     if (!meal) return null;
-    if (meal.maxTemp != null && weather.high > meal.maxTemp)
-        return `Too hot — forecast high ${weather.high}°, max for this meal ${meal.maxTemp}°`;
-    if (meal.minTemp != null && weather.high < meal.minTemp)
-        return `Too cold — forecast high ${weather.high}°, min for this meal ${meal.minTemp}°`;
+    if (weather) {
+        if (meal.maxTemp != null && weather.high > meal.maxTemp)
+            return `Too hot — forecast high ${weather.high}°, max for this meal ${meal.maxTemp}°`;
+        if (meal.minTemp != null && weather.high < meal.minTemp)
+            return `Too cold — forecast high ${weather.high}°, min for this meal ${meal.minTemp}°`;
+    }
+    if (meal.seasons && meal.seasons.length > 0 && dateStr) {
+        const season = getSeason(dateStr);
+        if (!meal.seasons.includes(season)) {
+            const suitable = meal.seasons.map(s => SEASON_LABELS[s] || s).join(', ');
+            return `Out of season — suitable for ${suitable}`;
+        }
+    }
     return null;
 }
 
@@ -129,7 +148,7 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealL
                     </Text>
                 )}
                 {(() => {
-                    const warn = tempWarning(entry?.mealName, mealLibrary, weather);
+                    const warn = getMealWarning(entry?.mealName, mealLibrary, weather, dateStr);
                     return warn ? (
                         <Text fontSize="xs" color="red.400" lineHeight="1.2" mt="1px" title={warn}>
                             ⚠ {warn}
@@ -186,7 +205,7 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealL
                                 <Text fontSize="xs" color="gray.400" px={2} py={1}>No meals found</Text>
                             )}
                             {filtered.map(name => {
-                                const warn = tempWarning(name, mealLibrary, weather);
+                                const warn = getMealWarning(name, mealLibrary, weather, dateStr);
                                 return (
                                     <Box
                                         key={name}

@@ -6,6 +6,7 @@ import com.menuplanner.security.AppUserDetails;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,9 @@ public class MealController {
                     resp.put("name", m.getName());
                     resp.put("minTemp", m.getMinTemp());
                     resp.put("maxTemp", m.getMaxTemp());
+                    resp.put("seasons", m.getSeasons() != null
+                            ? Arrays.stream(m.getSeasons().split(",")).filter(s -> !s.isBlank()).collect(Collectors.toList())
+                            : List.of());
                     return resp;
                 })
                 .collect(Collectors.toList());
@@ -55,6 +59,8 @@ public class MealController {
         meal.setShared(Boolean.TRUE.equals(req.shared()));
         meal.setMinTemp(req.minTemp());
         meal.setMaxTemp(req.maxTemp());
+        meal.setSeasons(req.seasons() == null || req.seasons().isEmpty() ? null
+                : req.seasons().stream().filter(s -> s != null && !s.isBlank()).collect(Collectors.joining(",")));
         Meal saved = mealRepository.save(meal);
         Map<String, Object> resp = new LinkedHashMap<>();
         resp.put("id", saved.getId());
@@ -64,8 +70,11 @@ public class MealController {
         resp.put("shared", saved.isShared());
         resp.put("minTemp", saved.getMinTemp());
         resp.put("maxTemp", saved.getMaxTemp());
+        resp.put("seasons", saved.getSeasons() != null
+                ? Arrays.stream(saved.getSeasons().split(",")).filter(s -> !s.isBlank()).collect(Collectors.toList())
+                : List.of());
         return resp;
     }
 
-    record MealRequest(String name, String recipeLink, String notes, Boolean shared, Integer minTemp, Integer maxTemp) {}
+    record MealRequest(String name, String recipeLink, String notes, Boolean shared, Integer minTemp, Integer maxTemp, List<String> seasons) {}
 }

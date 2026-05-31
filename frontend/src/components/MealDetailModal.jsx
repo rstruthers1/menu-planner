@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
     Alert, AlertDescription, AlertIcon, AlertTitle,
-    Box, Button, Checkbox, Collapse, FormControl, FormHelperText, FormLabel,
+    Box, Button, Checkbox, CheckboxGroup, Collapse, FormControl, FormHelperText, FormLabel,
     HStack, Input, Modal, ModalBody, ModalCloseButton, ModalContent,
-    ModalFooter, ModalHeader, ModalOverlay, Stack, Textarea, useToast,
+    ModalFooter, ModalHeader, ModalOverlay, Stack, Text, Textarea, useToast,
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 
@@ -11,7 +11,7 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 
 function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSaved }) {
     const [localDateStr, setLocalDateStr] = useState(dateStr || '');
-    const [form, setForm] = useState({ mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false, minTemp: '', maxTemp: '' });
+    const [form, setForm] = useState({ mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false, minTemp: '', maxTemp: '', seasons: [] });
     const [dupWarning, setDupWarning] = useState(null); // null | 'household' | 'shared'
     const toast = useToast();
 
@@ -20,8 +20,8 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
         setLocalDateStr(dateStr || '');
         setDupWarning(null);
         setForm(mode === 'edit' && entry
-            ? { mealName: entry.mealName || '', recipeLink: entry.recipeLink || '', notes: entry.notes || '', confirmed: entry.confirmed ?? false, leftover: entry.leftover ?? false, leftoverFromDate: entry.leftoverFromDate || '', shared: entry.shared ?? false, minTemp: entry.minTemp ?? '', maxTemp: entry.maxTemp ?? '' }
-            : { mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false, minTemp: '', maxTemp: '' }
+            ? { mealName: entry.mealName || '', recipeLink: entry.recipeLink || '', notes: entry.notes || '', confirmed: entry.confirmed ?? false, leftover: entry.leftover ?? false, leftoverFromDate: entry.leftoverFromDate || '', shared: entry.shared ?? false, minTemp: entry.minTemp ?? '', maxTemp: entry.maxTemp ?? '', seasons: entry.seasons || [] }
+            : { mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false, minTemp: '', maxTemp: '', seasons: [] }
         );
     }, [isOpen, entry, mode, dateStr]);
 
@@ -48,6 +48,7 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
             shared: form.shared,
             minTemp: form.minTemp !== '' ? Number(form.minTemp) : null,
             maxTemp: form.maxTemp !== '' ? Number(form.maxTemp) : null,
+            seasons: form.seasons,
         };
         const url = mode === 'edit' ? `/api/menus/${entry.id}` : '/api/menus';
         const method = mode === 'edit' ? 'PUT' : 'POST';
@@ -191,6 +192,22 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
                                     />
                                 </FormControl>
                             </Collapse>
+                            <FormControl>
+                                <FormLabel fontSize="sm">Suitable seasons — optional</FormLabel>
+                                <Text fontSize="xs" color="gray.500" mb={2}>Leave all unchecked for no restriction.</Text>
+                                <CheckboxGroup
+                                    value={form.seasons}
+                                    onChange={val => setForm(f => ({ ...f, seasons: val }))}
+                                    colorScheme="teal"
+                                >
+                                    <HStack spacing={4}>
+                                        <Checkbox value="SPRING">Spring</Checkbox>
+                                        <Checkbox value="SUMMER">Summer</Checkbox>
+                                        <Checkbox value="FALL">Fall</Checkbox>
+                                        <Checkbox value="WINTER">Winter</Checkbox>
+                                    </HStack>
+                                </CheckboxGroup>
+                            </FormControl>
                             <Checkbox
                                 isChecked={form.shared}
                                 onChange={e => setForm(f => ({ ...f, shared: e.target.checked }))}
