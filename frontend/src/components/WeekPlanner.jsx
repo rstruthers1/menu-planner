@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import {
     AlertDialog, AlertDialogBody, AlertDialogContent, AlertDialogFooter,
-    AlertDialogHeader, AlertDialogOverlay, Button, useDisclosure,
+    AlertDialogHeader, AlertDialogOverlay, Button, HStack, useDisclosure,
 } from '@chakra-ui/react';
 import AiChatModal from './AiChatModal';
 import DayRow from './DayRow';
@@ -96,6 +96,65 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
         onAlertClose();
     };
 
+    const handlePrint = () => {
+        const weekLabel = weekStart.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+        const icon = (condition) => {
+            if (!condition) return '';
+            const c = condition.toLowerCase();
+            if (c.includes('thunder')) return '⛈️';
+            if (c.includes('snow')) return '❄️';
+            if (c.includes('rain') || c.includes('shower') || c.includes('drizzle')) return '🌧️';
+            if (c.includes('fog')) return '🌫️';
+            if (c.includes('overcast')) return '☁️';
+            if (c.includes('partly') || c.includes('mainly clear')) return '⛅';
+            if (c.includes('clear')) return '☀️';
+            return '🌤️';
+        };
+
+        const rows = days.map(({ dateStr, dayName }) => {
+            const entry = entriesByDate[dateStr];
+            const w = weather[dateStr];
+            const dateLabel = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const meal = entry?.mealName || '—';
+            const leftoverNote = entry?.leftover ? ' <span style="color:#999;font-size:11px">(leftovers)</span>' : '';
+            const confirmed = entry && !entry.confirmed ? ' <span style="color:#aaa;font-size:11px">idea</span>' : '';
+            const weatherStr = w
+                ? `${icon(w.condition)} ${w.condition || ''} ${w.high !== undefined ? `${w.high}°/${w.low}°` : ''}`.trim()
+                : '—';
+            return `<tr>
+                <td><strong>${dayName}</strong><br><span style="color:#888;font-size:11px">${dateLabel}</span></td>
+                <td>${meal}${leftoverNote}${confirmed}</td>
+                <td style="white-space:nowrap">${weatherStr}</td>
+            </tr>`;
+        }).join('');
+
+        const html = `<!DOCTYPE html>
+<html><head>
+<title>Meal Plan — Week of ${weekLabel}</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 32px; color: #222; }
+  h1 { font-size: 18px; margin-bottom: 20px; color: #333; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 7px 12px; border-bottom: 2px solid #333; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #666; }
+  td { padding: 10px 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+</style>
+</head><body>
+<h1>Meal Plan — Week of ${weekLabel}</h1>
+<table>
+  <thead><tr><th>Day</th><th>Meal</th><th>Weather</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+</body></html>`;
+
+        const win = window.open('', '_blank', 'width=720,height=520');
+        win.document.write(html);
+        win.document.close();
+        win.focus();
+        win.print();
+    };
+
     const handleSuggestions = (suggestions) => {
         Object.entries(suggestions).forEach(([dateStr, mealName]) => {
             const day = days.find(d => d.dateStr === dateStr);
@@ -132,17 +191,16 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealSuggestions,
                     }}
                 />
             ))}
-            {entries.some(e => days.some(d => d.dateStr === e.mealDate)) && (
-                <Button
-                    size="xs"
-                    variant="ghost"
-                    colorScheme="red"
-                    mt={3}
-                    onClick={onAlertOpen}
-                >
-                    Clear this week
+            <HStack justify="flex-end" mt={3} spacing={2}>
+                <Button size="xs" variant="ghost" colorScheme="gray" onClick={handlePrint}>
+                    Print week
                 </Button>
-            )}
+                {entries.some(e => days.some(d => d.dateStr === e.mealDate)) && (
+                    <Button size="xs" variant="ghost" colorScheme="red" onClick={onAlertOpen}>
+                        Clear this week
+                    </Button>
+                )}
+            </HStack>
         </div>
         <AlertDialog isOpen={isAlertOpen} leastDestructiveRef={cancelRef} onClose={onAlertClose}>
             <AlertDialogOverlay>
