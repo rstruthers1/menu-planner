@@ -20,5 +20,6 @@ public class Meal {
     @JoinColumn(name = "household_id")
     private Household household;
 
+    @Column(columnDefinition = "boolean not null default false")
     private boolean shared = false;
 }

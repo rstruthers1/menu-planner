@@ -51,6 +51,9 @@ public class HouseholdSeeder implements CommandLineRunner {
         // Assign all unowned menu entries to the Struthers household
         jdbc.update("UPDATE menu_entry SET household_id = ? WHERE household_id IS NULL", struthers.getId());
 
+        // Ensure shared column exists — ddl-auto: update can't add NOT NULL columns to non-empty tables
+        jdbc.execute("ALTER TABLE meal ADD COLUMN IF NOT EXISTS shared boolean NOT NULL DEFAULT false");
+
         // Mark all unowned meals as shared (seeded from Excel — available to everyone)
         jdbc.update("UPDATE meal SET household_id = ?, shared = true WHERE household_id IS NULL", struthers.getId());
 
