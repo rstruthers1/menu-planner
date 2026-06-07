@@ -47,15 +47,27 @@
 - Proper invite codes: one person creates household, shares code, others join
 - Prevents accidental cross-household data mixing
 
-## Phase 4 — Deploy to Internet
-- **Digital Ocean App Platform** (~$12/mo app + ~$15/mo managed Postgres = ~$27/mo hard cap)
-- **Render.com** is a close alternative — similar pricing, slightly cheaper
-- Heroku works but pricier than it used to be
-- Both support deploying a Spring Boot fat JAR or Docker container from GitHub
-- Avoid AWS — no fixed price ceiling, easy to get surprise bills
+## Phase 4 — Deploy to Internet (in progress)
+Platform: **DigitalOcean App Platform** (~$12/mo app + ~$15/mo managed Postgres = ~$27/mo hard cap)
+One service: Spring Boot JAR serves the React build from `static/`. No CORS needed.
+
+### Done
+- ✅ Liquibase set up — `liquibase-core` added, `001-initial-schema.sql` captures full schema, `ddl-auto: none`, local DB synced
+
+### Remaining
+- Export local data → `002-seed-data.sql` (meals + menu entries + household; no users, no weather)
+- Remove `MenuEntryExcelLoader` (Excel seed replaced by DB migration) and `HouseholdSeeder` ALTER TABLE DDL
+- Wire React build into Maven (`frontend-maven-plugin` → `src/main/resources/static/`, SPA fallback)
+- `application-prod.yaml`: env vars for DB, logging at WARN, `show-sql: false`, registration disabled via env flag
+- DigitalOcean App Platform setup (GitHub → build → managed Postgres → env vars)
+- First-deploy: create Rachel's user account via direct SQL (password hash stays out of public repo)
+
+## Phase 3 — Household Invite Flow (after Phase 4)
+- Invite codes: one person creates household, shares code, others join
+- Currently `register` auto-assigns to the first household — fine until Joe needs to join
+- Registration is disabled in prod until invite flow is built
 
 ## Backlog
-- Database migrations — evaluate Flyway vs Liquibase (Liquibase advantage: already used at work, less context-switching). Increasingly urgent: `ddl-auto: update` is causing startup issues with schema changes on non-empty tables
 - Forgot password / reset password flow (email via [Resend.com](https://resend.com))
 - Switch frontend from Chakra UI v2 to v3 (API has changed — docs will match again)
 - Move `ANTHROPIC_API_KEY` to a `.env` file for cleaner local dev
