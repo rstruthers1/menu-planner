@@ -1,6 +1,6 @@
 weather:
-  latitude: 44.9916
-  longitude: -93.4053
+  latitude: 44.9858
+  longitude: -93.3594
 
 anthropic:
   api-key: ${ANTHROPIC_API_KEY:}
