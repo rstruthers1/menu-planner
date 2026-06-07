@@ -36,6 +36,12 @@
 - **Response logging filter** — `ResponseLoggingFilter` logs every API response method, path, status, and body at INFO level for easier debugging
 - **SLF4J logging in MealController** — debug-level logging on meal delete for household ownership diagnostics
 
+## Phase 2.7 — History & Library Polish ✅ done
+- **History deduplication** — switching meals on a day no longer accumulates entries; `saveMenu` upserts, `updateMenu` cleans up stragglers, and a one-time seeder SQL removed existing duplicates
+- **Paginated history** — `GET /api/history?page=&size=` returns `{entries, page, totalPages, totalElements}`; History tab shows Prev/Next controls and page count
+- **Jump-to-date in history** — date picker + Jump button navigates directly to the page containing that date (`GET /api/history/page-for-date`)
+- **Paginated Meal Library** — client-side pagination (15 per page); search resets to page 1
+
 ## Phase 3 — Household Invite Flow
 - Currently `register` auto-assigns to the first household (fine for one household)
 - Proper invite codes: one person creates household, shares code, others join
