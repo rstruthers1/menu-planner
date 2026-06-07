@@ -65,5 +65,16 @@ public class HouseholdSeeder implements CommandLineRunner {
         jdbc.execute("ALTER TABLE meal ADD COLUMN IF NOT EXISTS min_temp int");
         jdbc.execute("ALTER TABLE meal ADD COLUMN IF NOT EXISTS max_temp int");
         jdbc.execute("ALTER TABLE meal ADD COLUMN IF NOT EXISTS seasons varchar(50)");
+
+        // Remove duplicate menu entries — keep only the newest (highest id) per day per household
+        jdbc.execute("""
+                DELETE FROM menu_entry
+                WHERE meal_date IS NOT NULL
+                  AND id NOT IN (
+                      SELECT MAX(id) FROM menu_entry
+                      WHERE meal_date IS NOT NULL
+                      GROUP BY meal_date, household_id
+                  )
+                """);
     }
 }

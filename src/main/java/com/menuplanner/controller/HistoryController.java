@@ -6,8 +6,10 @@ import com.menuplanner.repository.WeatherRecordRepository;
 import com.menuplanner.security.AppUserDetails;
 import com.menuplanner.service.MenuEntryService;
 import com.menuplanner.service.WeatherService;
+import org.springframework.data.domain.Page;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
@@ -32,10 +34,15 @@ public class HistoryController {
     }
 
     @GetMapping("/api/history")
-    public List<Map<String, Object>> getHistory(@AuthenticationPrincipal AppUserDetails userDetails) {
-        List<MenuEntry> pastMeals = menuEntryService.getPastMeals(userDetails.getHousehold());
+    public Map<String, Object> getHistory(
+            @AuthenticationPrincipal AppUserDetails userDetails,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
 
-        List<LocalDate> dates = pastMeals.stream()
+        Page<MenuEntry> resultPage = menuEntryService.getPastMealsPage(userDetails.getHousehold(), page, size);
+        List<MenuEntry> entries = resultPage.getContent();
+
+        List<LocalDate> dates = entries.stream()
                 .map(MenuEntry::getMealDate)
                 .filter(d -> d != null)
                 .collect(Collectors.toList());
@@ -44,13 +51,12 @@ public class HistoryController {
                 .stream()
                 .collect(Collectors.toMap(WeatherRecord::getDate, w -> w));
 
-        // Lazy-fill any past dates that have no cached weather record
         dates.stream()
                 .filter(d -> !weatherByDate.containsKey(d))
                 .forEach(d -> weatherService.ensureCached(d)
                         .ifPresent(r -> weatherByDate.put(d, r)));
 
-        return pastMeals.stream().map(meal -> {
+        List<Map<String, Object>> items = entries.stream().map(meal -> {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("id", meal.getId());
             item.put("mealDate", meal.getMealDate() != null ? meal.getMealDate().toString() : null);
@@ -67,5 +73,23 @@ public class HistoryController {
             }
             return item;
         }).collect(Collectors.toList());
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("entries", items);
+        response.put("page", resultPage.getNumber());
+        response.put("totalPages", resultPage.getTotalPages());
+        response.put("totalElements", resultPage.getTotalElements());
+        return response;
+    }
+
+    @GetMapping("/api/history/page-for-date")
+    public Map<String, Object> getPageForDate(
+            @AuthenticationPrincipal AppUserDetails userDetails,
+            @RequestParam String date,
+            @RequestParam(defaultValue = "10") int size) {
+
+        LocalDate localDate = LocalDate.parse(date);
+        int pageNum = menuEntryService.getPageForDate(localDate, userDetails.getHousehold(), size);
+        return Map.of("page", pageNum);
     }
 }

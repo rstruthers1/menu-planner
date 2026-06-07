@@ -5,6 +5,9 @@ import com.menuplanner.domain.Meal;
 import com.menuplanner.domain.MenuEntry;
 import com.menuplanner.repository.MealRepository;
 import com.menuplanner.repository.MenuEntryRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -27,6 +30,19 @@ public class MenuEntryService {
     }
 
     public MenuEntry saveMenu(MenuEntry entry) {
+        if (entry.getMealDate() != null && entry.getHousehold() != null) {
+            List<MenuEntry> existing = repository.findByMealDateAndHousehold(entry.getMealDate(), entry.getHousehold());
+            if (!existing.isEmpty()) {
+                MenuEntry canonical = existing.get(0);
+                canonical.setMeal(entry.getMeal());
+                canonical.setDayOfWeek(entry.getDayOfWeek());
+                canonical.setConfirmed(entry.getConfirmed());
+                canonical.setLeftover(entry.getLeftover());
+                canonical.setLeftoverFromDate(entry.getLeftoverFromDate());
+                existing.stream().skip(1).map(MenuEntry::getId).forEach(repository::deleteById);
+                return repository.save(canonical);
+            }
+        }
         return repository.save(entry);
     }
 
@@ -40,7 +56,15 @@ public class MenuEntryService {
         existing.setConfirmed(updated.getConfirmed());
         existing.setLeftover(updated.getLeftover());
         existing.setLeftoverFromDate(updated.getLeftoverFromDate());
-        return repository.save(existing);
+        MenuEntry saved = repository.save(existing);
+        // Remove any other entries for the same date+household
+        if (saved.getMealDate() != null && saved.getHousehold() != null) {
+            repository.findByMealDateAndHousehold(saved.getMealDate(), saved.getHousehold())
+                    .stream().filter(e -> !e.getId().equals(saved.getId()))
+                    .map(MenuEntry::getId)
+                    .forEach(repository::deleteById);
+        }
+        return saved;
     }
 
     public MenuEntry setConfirmed(Long id, boolean confirmed) {
@@ -51,6 +75,16 @@ public class MenuEntryService {
 
     public List<MenuEntry> getPastMeals(Household household) {
         return repository.findByMealDateLessThanEqualAndHouseholdOrderByMealDateDesc(LocalDate.now(), household);
+    }
+
+    public Page<MenuEntry> getPastMealsPage(Household household, int page, int size) {
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "mealDate"));
+        return repository.findByMealDateLessThanEqualAndHousehold(LocalDate.now(), household, pageable);
+    }
+
+    public int getPageForDate(LocalDate date, Household household, int size) {
+        long position = repository.countEntriesNewerThan(date, LocalDate.now(), household.getId());
+        return (int) (position / size);
     }
 
     public void deleteMenu(Long id) {
