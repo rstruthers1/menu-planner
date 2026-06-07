@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import {
     Box, Button, HStack, Input, Popover, PopoverBody, PopoverContent,
-    PopoverTrigger, Text, VStack,
+    PopoverTrigger, Text, Tooltip, VStack,
 } from '@chakra-ui/react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 
@@ -273,9 +273,11 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealL
 
             <Box minW="85px" textAlign="right">
                 {weather ? (
-                    <Text fontSize="sm" color="gray.600" whiteSpace="nowrap">
-                        {weatherIcon(weather.condition)} {weather.high}°/{weather.low}°
-                    </Text>
+                    <Tooltip label="Weather is approximate and for meal planning purposes only" fontSize="xs" placement="left">
+                        <Text fontSize="sm" color="gray.600" whiteSpace="nowrap" cursor="default">
+                            {weatherIcon(weather.condition)} {weather.high}°/{weather.low}°
+                        </Text>
+                    </Tooltip>
                 ) : (
                     <Text fontSize="sm" color="gray.200">—</Text>
                 )}

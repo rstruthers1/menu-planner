@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-    Box, Button, HStack, Input, Link, Table, Tbody, Td, Text, Th, Thead, Tr,
+    Box, Button, HStack, Input, Link, Table, Tbody, Td, Text, Th, Thead, Tooltip, Tr,
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 
@@ -110,9 +110,11 @@ function History() {
                                             <Td fontSize="sm">{e.mealName}</Td>
                                             <Td whiteSpace="nowrap">
                                                 {e.condition ? (
-                                                    <Text fontSize="sm" color="gray.600">
-                                                        {weatherIcon(e.condition)} {e.highTempF}°/{e.lowTempF}°
-                                                    </Text>
+                                                    <Tooltip label="Weather is approximate and for meal planning purposes only" fontSize="xs" placement="left">
+                                                        <Text fontSize="sm" color="gray.600" cursor="default">
+                                                            {weatherIcon(e.condition)} {e.highTempF}°/{e.lowTempF}°
+                                                        </Text>
+                                                    </Tooltip>
                                                 ) : (
                                                     <Text fontSize="sm" color="gray.200">—</Text>
                                                 )}
@@ -131,7 +133,10 @@ function History() {
                             </Table>
                         </Box>
 
-                        {totalPages > 1 && (
+                        <Text fontSize="xs" color="gray.400" mt={2}>
+            * Weather is approximate and for meal planning purposes only.
+        </Text>
+        {totalPages > 1 && (
                             <HStack mt={3} justify="center" spacing={3}>
                                 <Button
                                     size="sm"

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import {
     AlertDialog, AlertDialogBody, AlertDialogContent, AlertDialogFooter,
-    AlertDialogHeader, AlertDialogOverlay, Button, HStack, Tag, TagLabel, useDisclosure,
+    AlertDialogHeader, AlertDialogOverlay, Button, HStack, Tag, TagLabel, Text, useDisclosure,
 } from '@chakra-ui/react';
 import { closestCenter, DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import AddMealModal from './AddMealModal';
@@ -281,6 +281,9 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
                     }}
                 />
             ))}
+            <Text fontSize="xs" color="gray.400" mt={2}>
+                * Weather is approximate and for meal planning purposes only.
+            </Text>
             <HStack justify="flex-end" mt={3} spacing={2}>
                 <Button size="xs" variant="ghost" colorScheme="green" onClick={onAddMealOpen}>
                     + Add to meal library
