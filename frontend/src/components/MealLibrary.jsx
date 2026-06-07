@@ -7,6 +7,7 @@ import { authFetch } from '../utils/api';
 
 const SEASON_LABELS = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall', WINTER: 'Winter' };
 const SEASON_COLORS = { SPRING: 'green', SUMMER: 'orange', FALL: 'yellow', WINTER: 'blue' };
+const PAGE_SIZE = 15;
 
 function tempLabel(minTemp, maxTemp) {
     if (minTemp != null && maxTemp != null) return `${minTemp}°–${maxTemp}°F`;
@@ -18,6 +19,7 @@ function tempLabel(minTemp, maxTemp) {
 function MealLibrary() {
     const [meals, setMeals] = useState([]);
     const [search, setSearch] = useState('');
+    const [page, setPage] = useState(0);
     const [editMeal, setEditMeal] = useState(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
     const { isOpen, onOpen, onClose } = useDisclosure();
@@ -33,6 +35,8 @@ function MealLibrary() {
     const filtered = meals.filter(m =>
         m.name.toLowerCase().includes(search.toLowerCase())
     );
+    const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+    const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
     const handleEdit = (meal) => {
         setEditMeal(meal);
@@ -86,7 +90,7 @@ function MealLibrary() {
                     placeholder="Search meal library…"
                     size="sm"
                     value={search}
-                    onChange={e => setSearch(e.target.value)}
+                    onChange={e => { setSearch(e.target.value); setPage(0); }}
                 />
                 <Button size="sm" colorScheme="green" onClick={() => { setEditMeal(null); onOpen(); }} flexShrink={0}>
                     + Add meal
@@ -100,7 +104,7 @@ function MealLibrary() {
             )}
 
             <VStack align="stretch" spacing={0}>
-                {filtered.map(meal => (
+                {paginated.map(meal => (
                     <Box
                         key={meal.id}
                         py={3}
@@ -167,6 +171,20 @@ function MealLibrary() {
                     </Box>
                 ))}
             </VStack>
+
+            {totalPages > 1 && (
+                <HStack mt={3} justify="center" spacing={3}>
+                    <Button size="sm" onClick={() => setPage(p => p - 1)} isDisabled={page === 0}>
+                        Prev
+                    </Button>
+                    <Text fontSize="sm" color="gray.600">
+                        Page {page + 1} of {totalPages}
+                    </Text>
+                    <Button size="sm" onClick={() => setPage(p => p + 1)} isDisabled={page >= totalPages - 1}>
+                        Next
+                    </Button>
+                </HStack>
+            )}
 
             <AddMealModal
                 isOpen={isOpen}
