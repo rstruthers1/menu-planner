@@ -68,6 +68,8 @@ One service: Spring Boot JAR serves the React build from `static/`. No CORS need
 - Registration is disabled in prod until invite flow is built
 
 ## Backlog
+- **Per-household weather location** — location currently hardcoded to Golden Valley MN; households should be able to set their own lat/lon (stored on `Household` entity); NWS for US locations, Open-Meteo fallback for international
+- **Shared meal UI gap** — hide Edit/Delete buttons for shared meals belonging to another household (backend already enforces this with 403; UI shows buttons that silently fail)
 - Forgot password / reset password flow (email via [Resend.com](https://resend.com))
 - Switch frontend from Chakra UI v2 to v3 (API has changed — docs will match again)
 - Move `ANTHROPIC_API_KEY` to a `.env` file for cleaner local dev
