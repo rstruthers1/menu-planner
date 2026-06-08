@@ -28,4 +28,6 @@ public class Meal {
 
     @Column(length = 50)
     private String seasons; // comma-separated: SPRING,SUMMER,FALL,WINTER; null = unrestricted
+
+    private String keyIngredient; // e.g. "shredded chicken" — used to suggest complementary meals
 }

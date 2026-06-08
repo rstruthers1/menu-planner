@@ -26,4 +26,7 @@ public class MenuEntry {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "household_id")
     private Household household;
+
+    @Column(length = 500)
+    private String sides; // free-text, e.g. "Asparagus, Roasted Potatoes"
 }

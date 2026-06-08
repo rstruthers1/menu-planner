@@ -56,7 +56,7 @@ function getMealWarning(mealName, mealLibrary, weather, dateStr) {
     return null;
 }
 
-function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealLibrary, onSave, onOpenAiChat, onOpenDetail, onToggleConfirmed }) {
+function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealLibrary, weekKeyIngredients, onSave, onOpenAiChat, onOpenDetail, onToggleConfirmed }) {
     const [mealName, setMealName] = useState(entry?.mealName || '');
     const [pickerOpen, setPickerOpen] = useState(false);
     const [search, setSearch] = useState('');
@@ -147,6 +147,11 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealL
                             : 'leftovers'}
                     </Text>
                 )}
+                {entry?.sides && (
+                    <Text fontSize="xs" color="gray.500" lineHeight="1.2" mt="1px">
+                        + {entry.sides}
+                    </Text>
+                )}
                 {(() => {
                     const warn = getMealWarning(entry?.mealName, mealLibrary, weather, dateStr);
                     return warn ? (
@@ -206,6 +211,9 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealL
                             )}
                             {filtered.map(name => {
                                 const warn = getMealWarning(name, mealLibrary, weather, dateStr);
+                                const meal = mealLibrary.find(m => m.name === name);
+                                const ki = meal?.keyIngredient?.toLowerCase().trim();
+                                const ingredientMatch = ki && weekKeyIngredients?.has(ki);
                                 return (
                                     <Box
                                         key={name}
@@ -215,11 +223,17 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealL
                                         cursor="pointer"
                                         borderRadius="sm"
                                         color={warn ? 'gray.400' : undefined}
-                                        _hover={{ bg: 'gray.100' }}
+                                        bg={ingredientMatch ? 'teal.50' : undefined}
+                                        _hover={{ bg: ingredientMatch ? 'teal.100' : 'gray.100' }}
                                         onMouseDown={() => pickMeal(name)}
-                                        title={warn || undefined}
+                                        title={warn || (ingredientMatch ? `Uses ${meal.keyIngredient} — already planned this week` : undefined)}
                                     >
                                         {warn ? '⚠ ' : ''}{name}
+                                        {ingredientMatch && (
+                                            <Text as="span" fontSize="10px" color="teal.600" ml={1}>
+                                                🔑 {meal.keyIngredient}
+                                            </Text>
+                                        )}
                                     </Box>
                                 );
                             })}

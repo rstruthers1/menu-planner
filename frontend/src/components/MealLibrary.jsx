@@ -148,6 +148,9 @@ function MealLibrary() {
                                     </HStack>
                                 )}
 
+                                {meal.keyIngredient && (
+                                    <Text fontSize="xs" color="teal.600" mt="2px">🔑 {meal.keyIngredient}</Text>
+                                )}
                                 {meal.notes && (
                                     <Text fontSize="xs" color="gray.400" mt="2px" noOfLines={1}>{meal.notes}</Text>
                                 )}

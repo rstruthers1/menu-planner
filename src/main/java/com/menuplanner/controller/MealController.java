@@ -109,6 +109,8 @@ public class MealController {
         meal.setMaxTemp(req.maxTemp());
         meal.setSeasons(req.seasons() == null || req.seasons().isEmpty() ? null
                 : req.seasons().stream().filter(s -> s != null && !s.isBlank()).collect(Collectors.joining(",")));
+        meal.setKeyIngredient(req.keyIngredient() != null && !req.keyIngredient().isBlank()
+                ? req.keyIngredient().trim() : null);
     }
 
     private Map<String, Object> toResponse(Meal m) {
@@ -123,9 +125,10 @@ public class MealController {
         resp.put("seasons", m.getSeasons() != null
                 ? Arrays.stream(m.getSeasons().split(",")).filter(s -> !s.isBlank()).collect(Collectors.toList())
                 : List.of());
+        resp.put("keyIngredient", m.getKeyIngredient());
         return resp;
     }
 
     record MealRequest(String name, String recipeLink, String notes, Boolean shared,
-                       Integer minTemp, Integer maxTemp, List<String> seasons) {}
+                       Integer minTemp, Integer maxTemp, List<String> seasons, String keyIngredient) {}
 }

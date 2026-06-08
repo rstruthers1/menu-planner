@@ -3,11 +3,11 @@ import {
     Alert, AlertDescription, AlertIcon, AlertTitle,
     Box, Button, Checkbox, CheckboxGroup, FormControl, FormHelperText, FormLabel,
     HStack, Input, Modal, ModalBody, ModalCloseButton, ModalContent,
-    ModalFooter, ModalHeader, ModalOverlay, Stack, Textarea, Text, useToast,
+    ModalFooter, ModalHeader, ModalOverlay, Stack, Text, Textarea, useToast,
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 
-const EMPTY_FORM = { name: '', recipeLink: '', notes: '', shared: false, minTemp: '', maxTemp: '', seasons: [] };
+const EMPTY_FORM = { name: '', recipeLink: '', notes: '', shared: false, minTemp: '', maxTemp: '', seasons: [], keyIngredient: '' };
 
 function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
     const isEdit = !!editMeal;
@@ -28,6 +28,7 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
                 minTemp: editMeal.minTemp ?? '',
                 maxTemp: editMeal.maxTemp ?? '',
                 seasons: editMeal.seasons || [],
+                keyIngredient: editMeal.keyIngredient || '',
             });
         } else {
             setForm(EMPTY_FORM);
@@ -110,6 +111,11 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
                                 </Alert>
                             )}
 
+                            <FormControl>
+                                <FormLabel>Key Ingredient <Text as="span" fontSize="xs" color="gray.400" fontWeight="normal">— optional</Text></FormLabel>
+                                <Input name="keyIngredient" value={form.keyIngredient} onChange={handleChange} placeholder="e.g. shredded chicken" />
+                                <FormHelperText fontSize="xs">Used to suggest other meals that use the same ingredient</FormHelperText>
+                            </FormControl>
                             <FormControl>
                                 <FormLabel>Recipe Link</FormLabel>
                                 <Input name="recipeLink" value={form.recipeLink} onChange={handleChange} placeholder="https://…" />

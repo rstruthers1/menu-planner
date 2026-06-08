@@ -58,6 +58,7 @@ public class MenuEntryController {
                 ? LocalDate.parse(req.leftoverFromDate()) : null);
         entry.setMeal(meal);
         entry.setHousehold(household);
+        entry.setSides(req.sides());
         return toResponse(service.saveMenu(entry));
     }
 
@@ -73,6 +74,7 @@ public class MenuEntryController {
         updated.setLeftover(req.leftover());
         updated.setLeftoverFromDate(req.leftoverFromDate() != null && !req.leftoverFromDate().isBlank()
                 ? LocalDate.parse(req.leftoverFromDate()) : null);
+        updated.setSides(req.sides());
         return toResponse(service.updateMenu(id, updated));
     }
 
@@ -105,6 +107,7 @@ public class MenuEntryController {
                 : List.of());
         m.put("leftover", entry.getLeftover());
         m.put("leftoverFromDate", entry.getLeftoverFromDate() != null ? entry.getLeftoverFromDate().toString() : null);
+        m.put("sides", entry.getSides());
         return m;
     }
 
@@ -112,6 +115,6 @@ public class MenuEntryController {
             String mealDate, String dayOfWeek, String mealName,
             String recipeLink, String notes, Boolean confirmed,
             Boolean leftover, String leftoverFromDate, Boolean shared,
-            Integer minTemp, Integer maxTemp, List<String> seasons
+            Integer minTemp, Integer maxTemp, List<String> seasons, String sides
     ) {}
 }
