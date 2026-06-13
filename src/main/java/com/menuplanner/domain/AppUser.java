@@ -22,4 +22,7 @@ public class AppUser {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "household_id")
     private Household household;
+
+    @Column(nullable = false)
+    private boolean admin = false;
 }

@@ -48,7 +48,8 @@ public class AuthController {
         return Map.of(
                 "token", token,
                 "name", user.getName(),
-                "householdName", user.getHousehold() != null ? user.getHousehold().getName() : ""
+                "householdName", user.getHousehold() != null ? user.getHousehold().getName() : "",
+                "admin", user.isAdmin()
         );
     }
 
@@ -81,7 +82,8 @@ public class AuthController {
         return Map.of(
                 "name", user.getName(),
                 "email", user.getEmail() != null ? user.getEmail() : "",
-                "householdName", user.getHousehold() != null ? user.getHousehold().getName() : ""
+                "householdName", user.getHousehold() != null ? user.getHousehold().getName() : "",
+                "admin", user.isAdmin()
         );
     }
 

@@ -181,7 +181,7 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
                                             value={form.recipe.ingredients}
                                             onChange={ings => setForm(f => ({ ...f, recipe: { ...f.recipe, ingredients: ings } }))}
                                             placeholder="e.g. shredded chicken…"
-                                            suggestionsUrl="/api/meals/ingredient-suggestions"
+                                            suggestionsUrl="/api/ingredients"
                                         />
                                     </FormControl>
                                 </Stack>

@@ -51,6 +51,27 @@
 - **Migration 006** — adds `household_id` and `servings` to the `recipe` table; backfills `household_id` from linked meal for existing recipes
 - **Known limitation:** auto-scaling ingredient amounts requires structured quantity + unit fields — deferred to backlog
 
+## Phase 2.9 — Ingredient Scoping + Admin Role ✅ done
+- **Global vs household ingredients** — `ingredient.household_id` is nullable; null = global (visible to all), set = household-specific (visible only to that household)
+- **Admin role** — `app_user.admin` boolean; migration 007 adds the column (default false); set to true via direct SQL for Rachel
+- **`ROLE_ADMIN` authority** — `AppUserDetails` returns both `ROLE_ADMIN` and `ROLE_USER` for admins; `POST /api/ingredients/global` locked to admins in `SecurityConfig`
+- **`/api/ingredients?q=`** — new autocomplete endpoint returns household ingredients first, then global; replaces `/api/meals/ingredient-suggestions` in meal and recipe editors
+- **`/api/ingredients/global`** — GET (list), POST (admin-only add), DELETE /{id} (admin for global, any user for their own)
+- **Admin tab** — visible only when `currentUser.admin = true`; simple UI to add/delete global ingredients; `admin` flag now returned from `/api/auth/login` and `/api/auth/me`
+
+## Phase 2.10 — Structured Ingredient Amounts (planned)
+Replace free-text ingredient amounts with a structured model so scaling works automatically.
+
+### Schema changes
+- `unit (id, symbol, label, sort_order)` — seeded table: tsp, tbsp, cup, pt, qt, gal, oz, lb, g, kg, ml, L, whole, clove, can, pkg, slice, pinch, to taste
+- `recipe_ingredient` join table gains: `quantity decimal` (nullable), `unit_id FK → unit` (nullable), `sort_order int`
+
+### What changes
+- Ingredient names become pure ingredient (e.g. "flour"), quantity and unit are separate fields
+- Recipe ingredient editor switches from TagInput to a row-per-ingredient UI: `[qty] [unit ▾] [ingredient name]`
+- Scale viewer auto-multiplies quantities instead of showing a manual multiplier hint
+- Admin can add new units via the Admin tab
+
 ## Phase 3 — Household Invite Flow
 - Currently `register` auto-assigns to the first household (fine for one household)
 - Proper invite codes: one person creates household, shares code, others join

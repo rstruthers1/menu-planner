@@ -120,7 +120,7 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, onSaved }) {
                                     value={form.ingredients}
                                     onChange={ings => setForm(f => ({ ...f, ingredients: ings }))}
                                     placeholder="e.g. 2 cups flour…"
-                                    suggestionsUrl="/api/meals/ingredient-suggestions"
+                                    suggestionsUrl="/api/ingredients"
                                 />
                             </FormControl>
 

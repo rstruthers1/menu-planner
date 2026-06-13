@@ -19,10 +19,14 @@ public class AppUserDetails implements UserDetails {
 
     public AppUser getAppUser() { return user; }
     public Household getHousehold() { return user.getHousehold(); }
+    public boolean isAdmin() { return user.isAdmin(); }
 
     @Override public String getUsername() { return user.getEmail(); }
     @Override public String getPassword() { return user.getPasswordHash(); }
     @Override public Collection<? extends GrantedAuthority> getAuthorities() {
+        if (user.isAdmin()) {
+            return List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("ROLE_USER"));
+        }
         return List.of(new SimpleGrantedAuthority("ROLE_USER"));
     }
     @Override public boolean isAccountNonExpired() { return true; }
