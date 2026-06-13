@@ -39,7 +39,6 @@ public class MenuEntryService {
                 canonical.setConfirmed(entry.getConfirmed());
                 canonical.setLeftover(entry.getLeftover());
                 canonical.setLeftoverFromDate(entry.getLeftoverFromDate());
-                canonical.setSides(entry.getSides());
                 existing.stream().skip(1).map(MenuEntry::getId).forEach(repository::deleteById);
                 return repository.save(canonical);
             }
@@ -57,7 +56,6 @@ public class MenuEntryService {
         existing.setConfirmed(updated.getConfirmed());
         existing.setLeftover(updated.getLeftover());
         existing.setLeftoverFromDate(updated.getLeftoverFromDate());
-        existing.setSides(updated.getSides());
         MenuEntry saved = repository.save(existing);
         // Remove any other entries for the same date+household
         if (saved.getMealDate() != null && saved.getHousehold() != null) {

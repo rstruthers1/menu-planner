@@ -27,6 +27,4 @@ public class MenuEntry {
     @JoinColumn(name = "household_id")
     private Household household;
 
-    @Column(length = 500)
-    private String sides; // free-text, e.g. "Asparagus, Roasted Potatoes"
 }

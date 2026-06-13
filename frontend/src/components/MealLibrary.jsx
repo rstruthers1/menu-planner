@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
-    Badge, Box, Button, HStack, Input, Link, Text, useDisclosure, useToast, VStack,
+    Badge, Box, Button, HStack, Input, Link, Modal, ModalBody, ModalCloseButton,
+    ModalContent, ModalHeader, ModalOverlay, Tag, TagLabel, Text, useDisclosure,
+    useToast, VStack,
 } from '@chakra-ui/react';
 import AddMealModal from './AddMealModal';
 import { authFetch } from '../utils/api';
@@ -16,12 +18,47 @@ function tempLabel(minTemp, maxTemp) {
     return null;
 }
 
+function RecipeModal({ recipe, isOpen, onClose }) {
+    if (!recipe) return null;
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} size="md">
+            <ModalOverlay />
+            <ModalContent>
+                <ModalHeader fontSize="md">📖 {recipe.name}</ModalHeader>
+                <ModalCloseButton />
+                <ModalBody pb={6}>
+                    {recipe.ingredients && recipe.ingredients.length > 0 && (
+                        <Box mb={4}>
+                            <Text fontWeight="semibold" fontSize="sm" mb={2}>Ingredients</Text>
+                            <VStack align="stretch" spacing={1}>
+                                {recipe.ingredients.map(ing => (
+                                    <Text key={ing} fontSize="sm">• {ing}</Text>
+                                ))}
+                            </VStack>
+                        </Box>
+                    )}
+                    {recipe.instructions && (
+                        <Box>
+                            <Text fontWeight="semibold" fontSize="sm" mb={2}>Instructions</Text>
+                            <Text fontSize="sm" whiteSpace="pre-wrap">{recipe.instructions}</Text>
+                        </Box>
+                    )}
+                    {!recipe.ingredients?.length && !recipe.instructions && (
+                        <Text fontSize="sm" color="gray.400">No details added yet.</Text>
+                    )}
+                </ModalBody>
+            </ModalContent>
+        </Modal>
+    );
+}
+
 function MealLibrary() {
     const [meals, setMeals] = useState([]);
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(0);
     const [editMeal, setEditMeal] = useState(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+    const [recipeModal, setRecipeModal] = useState(null);
     const { isOpen, onOpen, onClose } = useDisclosure();
     const toast = useToast();
 
@@ -50,13 +87,13 @@ function MealLibrary() {
 
     const handleSaved = (saved) => {
         setMeals(prev => prev.map(m => m.id === saved.id
-            ? { ...saved, seasons: saved.seasons || [] }
+            ? { ...saved, seasons: saved.seasons || [], sides: saved.sides || [], recipe: saved.recipe ?? null }
             : m
         ));
     };
 
     const handleAdded = (saved) => {
-        setMeals(prev => [...prev, { ...saved, seasons: saved.seasons || [] }]
+        setMeals(prev => [...prev, { ...saved, seasons: saved.seasons || [], sides: saved.sides || [], recipe: saved.recipe ?? null }]
             .sort((a, b) => a.name.localeCompare(b.name)));
     };
 
@@ -148,9 +185,31 @@ function MealLibrary() {
                                     </HStack>
                                 )}
 
-                                {meal.keyIngredient && (
-                                    <Text fontSize="xs" color="teal.600" mt="2px">🔑 {meal.keyIngredient}</Text>
+                                {meal.sides && meal.sides.length > 0 && (
+                                    <HStack spacing={1} mt="4px" flexWrap="wrap">
+                                        <Text fontSize="xs" color="gray.500">Sides:</Text>
+                                        {meal.sides.map(s => (
+                                            <Tag key={s} size="sm" variant="subtle" colorScheme="gray" fontSize="10px">
+                                                <TagLabel>{s}</TagLabel>
+                                            </Tag>
+                                        ))}
+                                    </HStack>
                                 )}
+
+                                {meal.recipe && (
+                                    <Button
+                                        size="xs"
+                                        variant="link"
+                                        colorScheme="orange"
+                                        mt="4px"
+                                        fontWeight="normal"
+                                        fontSize="xs"
+                                        onClick={() => setRecipeModal(meal.recipe)}
+                                    >
+                                        📖 {meal.recipe.name}
+                                    </Button>
+                                )}
+
                                 {meal.notes && (
                                     <Text fontSize="xs" color="gray.400" mt="2px" noOfLines={1}>{meal.notes}</Text>
                                 )}
@@ -194,6 +253,11 @@ function MealLibrary() {
                 onClose={handleModalClose}
                 editMeal={editMeal}
                 onAdded={editMeal ? handleSaved : handleAdded}
+            />
+            <RecipeModal
+                recipe={recipeModal}
+                isOpen={!!recipeModal}
+                onClose={() => setRecipeModal(null)}
             />
         </Box>
     );

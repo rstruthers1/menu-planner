@@ -37,15 +37,6 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
     const entriesByDate = {};
     entries.forEach(e => { entriesByDate[e.mealDate] = e; });
 
-    const weekKeyIngredients = new Set(
-        days.flatMap(({ dateStr }) => {
-            const e = entriesByDate[dateStr];
-            if (!e?.mealName) return [];
-            const meal = mealLibrary.find(m => m.name === e.mealName);
-            return meal?.keyIngredient?.trim() ? [meal.keyIngredient.toLowerCase().trim()] : [];
-        })
-    );
-
     const handleSave = (dateStr, dayName, mealName) => {
         const existing = entriesByDate[dateStr];
 
@@ -280,7 +271,6 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
                     weather={weather[dateStr]}
                     mealSuggestions={mealSuggestions}
                     mealLibrary={mealLibrary}
-                    weekKeyIngredients={weekKeyIngredients}
                     onSave={handleSave}
                     onToggleConfirmed={handleToggleConfirmed}
                     onOpenDetail={(mode) => setDetailDay({ dateStr, dayName, entry: entriesByDate[dateStr], mode })}

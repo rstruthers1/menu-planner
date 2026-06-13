@@ -2,6 +2,11 @@ package com.menuplanner.domain;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "meal")
@@ -29,5 +34,18 @@ public class Meal {
     @Column(length = 50)
     private String seasons; // comma-separated: SPRING,SUMMER,FALL,WINTER; null = unrestricted
 
-    private String keyIngredient; // e.g. "shredded chicken" — used to suggest complementary meals
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    @OneToOne(mappedBy = "meal", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Recipe recipe;
+
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "meal_side",
+            joinColumns = @JoinColumn(name = "meal_id"),
+            inverseJoinColumns = @JoinColumn(name = "side_id")
+    )
+    private List<Side> sides = new ArrayList<>();
 }

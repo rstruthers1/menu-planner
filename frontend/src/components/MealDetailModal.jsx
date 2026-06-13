@@ -11,7 +11,7 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 
 function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSaved }) {
     const [localDateStr, setLocalDateStr] = useState(dateStr || '');
-    const [form, setForm] = useState({ mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false, minTemp: '', maxTemp: '', seasons: [], sides: '' });
+    const [form, setForm] = useState({ mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false, minTemp: '', maxTemp: '', seasons: [] });
     const [dupWarning, setDupWarning] = useState(null); // null | 'household' | 'shared'
     const toast = useToast();
 
@@ -20,8 +20,8 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
         setLocalDateStr(dateStr || '');
         setDupWarning(null);
         setForm(mode === 'edit' && entry
-            ? { mealName: entry.mealName || '', recipeLink: entry.recipeLink || '', notes: entry.notes || '', confirmed: entry.confirmed ?? false, leftover: entry.leftover ?? false, leftoverFromDate: entry.leftoverFromDate || '', shared: entry.shared ?? false, minTemp: entry.minTemp ?? '', maxTemp: entry.maxTemp ?? '', seasons: entry.seasons || [], sides: entry.sides || '' }
-            : { mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false, minTemp: '', maxTemp: '', seasons: [], sides: '' }
+            ? { mealName: entry.mealName || '', recipeLink: entry.recipeLink || '', notes: entry.notes || '', confirmed: entry.confirmed ?? false, leftover: entry.leftover ?? false, leftoverFromDate: entry.leftoverFromDate || '', shared: entry.shared ?? false, minTemp: entry.minTemp ?? '', maxTemp: entry.maxTemp ?? '', seasons: entry.seasons || [] }
+            : { mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false, minTemp: '', maxTemp: '', seasons: [] }
         );
     }, [isOpen, entry, mode, dateStr]);
 
@@ -45,7 +45,6 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
             confirmed: form.confirmed,
             leftover: form.leftover,
             leftoverFromDate: form.leftover ? (form.leftoverFromDate || null) : null,
-            sides: form.sides || null,
             shared: form.shared,
             minTemp: form.minTemp !== '' ? Number(form.minTemp) : null,
             maxTemp: form.maxTemp !== '' ? Number(form.maxTemp) : null,
@@ -133,10 +132,6 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
                                 </Alert>
                             )}
 
-                            <FormControl>
-                                <FormLabel>Sides <Text as="span" fontSize="xs" color="gray.400" fontWeight="normal">— optional</Text></FormLabel>
-                                <Input name="sides" value={form.sides} onChange={handleChange} placeholder="e.g. Asparagus, Roasted Potatoes" />
-                            </FormControl>
                             <FormControl>
                                 <FormLabel>Recipe Link</FormLabel>
                                 <Input name="recipeLink" value={form.recipeLink} onChange={handleChange} placeholder="https://…" />

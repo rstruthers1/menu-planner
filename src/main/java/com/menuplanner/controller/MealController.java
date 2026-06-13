@@ -1,8 +1,7 @@
 package com.menuplanner.controller;
 
-import com.menuplanner.domain.Meal;
-import com.menuplanner.repository.MealRepository;
-import com.menuplanner.repository.MenuEntryRepository;
+import com.menuplanner.domain.*;
+import com.menuplanner.repository.*;
 import com.menuplanner.security.AppUserDetails;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -12,10 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -26,10 +22,18 @@ public class MealController {
 
     private final MealRepository mealRepository;
     private final MenuEntryRepository menuEntryRepository;
+    private final RecipeRepository recipeRepository;
+    private final IngredientRepository ingredientRepository;
+    private final SideRepository sideRepository;
 
-    public MealController(MealRepository mealRepository, MenuEntryRepository menuEntryRepository) {
+    public MealController(MealRepository mealRepository, MenuEntryRepository menuEntryRepository,
+                          RecipeRepository recipeRepository, IngredientRepository ingredientRepository,
+                          SideRepository sideRepository) {
         this.mealRepository = mealRepository;
         this.menuEntryRepository = menuEntryRepository;
+        this.recipeRepository = recipeRepository;
+        this.ingredientRepository = ingredientRepository;
+        this.sideRepository = sideRepository;
     }
 
     @GetMapping
@@ -48,14 +52,32 @@ public class MealController {
         return Map.of("existsInHousehold", existsInHousehold, "existsShared", existsShared);
     }
 
+    @GetMapping("/ingredient-suggestions")
+    public List<String> ingredientSuggestions(@RequestParam(defaultValue = "") String q,
+                                               @AuthenticationPrincipal AppUserDetails userDetails) {
+        return ingredientRepository
+                .findByHouseholdAndNameContainingIgnoreCaseOrderByName(userDetails.getHousehold(), q)
+                .stream().map(Ingredient::getName).collect(Collectors.toList());
+    }
+
+    @GetMapping("/side-suggestions")
+    public List<String> sideSuggestions(@RequestParam(defaultValue = "") String q,
+                                         @AuthenticationPrincipal AppUserDetails userDetails) {
+        return sideRepository
+                .findByHouseholdAndNameContainingIgnoreCaseOrderByName(userDetails.getHousehold(), q)
+                .stream().map(Side::getName).collect(Collectors.toList());
+    }
+
     @PostMapping
     public Map<String, Object> createMeal(@RequestBody MealRequest req,
                                           @AuthenticationPrincipal AppUserDetails userDetails) {
         Meal meal = new Meal();
         meal.setName(req.name().trim());
         meal.setHousehold(userDetails.getHousehold());
-        applyRequest(meal, req);
-        return toResponse(mealRepository.save(meal));
+        applyBasicFields(meal, req);
+        meal = mealRepository.save(meal);
+        applyRecipeAndSides(meal, req, userDetails.getHousehold());
+        return toResponse(meal);
     }
 
     @GetMapping("/{id}/debug")
@@ -79,8 +101,10 @@ public class MealController {
         Meal meal = mealRepository.findByIdForHousehold(id, userDetails.getHousehold().getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Meal not found or belongs to another household"));
         meal.setName(req.name().trim());
-        applyRequest(meal, req);
-        return toResponse(mealRepository.save(meal));
+        applyBasicFields(meal, req);
+        meal = mealRepository.save(meal);
+        applyRecipeAndSides(meal, req, userDetails.getHousehold());
+        return toResponse(meal);
     }
 
     @DeleteMapping("/{id}")
@@ -101,7 +125,7 @@ public class MealController {
         mealRepository.deleteById(id);
     }
 
-    private void applyRequest(Meal meal, MealRequest req) {
+    private void applyBasicFields(Meal meal, MealRequest req) {
         meal.setRecipeLink(req.recipeLink());
         meal.setNotes(req.notes());
         meal.setShared(Boolean.TRUE.equals(req.shared()));
@@ -109,8 +133,57 @@ public class MealController {
         meal.setMaxTemp(req.maxTemp());
         meal.setSeasons(req.seasons() == null || req.seasons().isEmpty() ? null
                 : req.seasons().stream().filter(s -> s != null && !s.isBlank()).collect(Collectors.joining(",")));
-        meal.setKeyIngredient(req.keyIngredient() != null && !req.keyIngredient().isBlank()
-                ? req.keyIngredient().trim() : null);
+    }
+
+    private void applyRecipeAndSides(Meal meal, MealRequest req, Household household) {
+        RecipeRequest recipeReq = req.recipe();
+        if (recipeReq != null && recipeReq.name() != null && !recipeReq.name().isBlank()) {
+            Recipe recipe = recipeRepository.findByMeal(meal).orElse(new Recipe());
+            recipe.setMeal(meal);
+            recipe.setName(recipeReq.name().trim());
+            recipe.setInstructions(recipeReq.instructions());
+            List<Ingredient> ingredients = new ArrayList<>();
+            if (recipeReq.ingredients() != null) {
+                for (String ingName : recipeReq.ingredients()) {
+                    if (ingName == null || ingName.isBlank()) continue;
+                    String trimmed = ingName.trim();
+                    Ingredient ing = ingredientRepository.findByNameIgnoreCaseAndHousehold(trimmed, household)
+                            .orElseGet(() -> {
+                                Ingredient newIng = new Ingredient();
+                                newIng.setName(trimmed);
+                                newIng.setHousehold(household);
+                                return ingredientRepository.save(newIng);
+                            });
+                    ingredients.add(ing);
+                }
+            }
+            recipe.setIngredients(ingredients);
+            Recipe saved = recipeRepository.save(recipe);
+            meal.setRecipe(saved);
+        } else {
+            recipeRepository.findByMeal(meal).ifPresent(r -> {
+                meal.setRecipe(null);
+                recipeRepository.delete(r);
+            });
+        }
+
+        List<Side> sides = new ArrayList<>();
+        if (req.sides() != null) {
+            for (String sideName : req.sides()) {
+                if (sideName == null || sideName.isBlank()) continue;
+                String trimmed = sideName.trim();
+                Side side = sideRepository.findByNameIgnoreCaseAndHousehold(trimmed, household)
+                        .orElseGet(() -> {
+                            Side newSide = new Side();
+                            newSide.setName(trimmed);
+                            newSide.setHousehold(household);
+                            return sideRepository.save(newSide);
+                        });
+                sides.add(side);
+            }
+        }
+        meal.setSides(sides);
+        mealRepository.save(meal);
     }
 
     private Map<String, Object> toResponse(Meal m) {
@@ -125,10 +198,25 @@ public class MealController {
         resp.put("seasons", m.getSeasons() != null
                 ? Arrays.stream(m.getSeasons().split(",")).filter(s -> !s.isBlank()).collect(Collectors.toList())
                 : List.of());
-        resp.put("keyIngredient", m.getKeyIngredient());
+        Recipe recipe = m.getRecipe();
+        if (recipe != null) {
+            Map<String, Object> recipeMap = new LinkedHashMap<>();
+            recipeMap.put("id", recipe.getId());
+            recipeMap.put("name", recipe.getName());
+            recipeMap.put("instructions", recipe.getInstructions());
+            recipeMap.put("ingredients", recipe.getIngredients().stream()
+                    .map(Ingredient::getName).collect(Collectors.toList()));
+            resp.put("recipe", recipeMap);
+        } else {
+            resp.put("recipe", null);
+        }
+        resp.put("sides", m.getSides().stream().map(Side::getName).collect(Collectors.toList()));
         return resp;
     }
 
+    record RecipeRequest(String name, String instructions, List<String> ingredients) {}
+
     record MealRequest(String name, String recipeLink, String notes, Boolean shared,
-                       Integer minTemp, Integer maxTemp, List<String> seasons, String keyIngredient) {}
+                       Integer minTemp, Integer maxTemp, List<String> seasons,
+                       RecipeRequest recipe, List<String> sides) {}
 }

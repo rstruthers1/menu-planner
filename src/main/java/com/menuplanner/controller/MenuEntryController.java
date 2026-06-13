@@ -3,6 +3,7 @@ package com.menuplanner.controller;
 import com.menuplanner.domain.Household;
 import com.menuplanner.domain.Meal;
 import com.menuplanner.domain.MenuEntry;
+import com.menuplanner.domain.Side;
 import com.menuplanner.security.AppUserDetails;
 import com.menuplanner.service.MenuEntryService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -58,7 +59,6 @@ public class MenuEntryController {
                 ? LocalDate.parse(req.leftoverFromDate()) : null);
         entry.setMeal(meal);
         entry.setHousehold(household);
-        entry.setSides(req.sides());
         return toResponse(service.saveMenu(entry));
     }
 
@@ -74,7 +74,6 @@ public class MenuEntryController {
         updated.setLeftover(req.leftover());
         updated.setLeftoverFromDate(req.leftoverFromDate() != null && !req.leftoverFromDate().isBlank()
                 ? LocalDate.parse(req.leftoverFromDate()) : null);
-        updated.setSides(req.sides());
         return toResponse(service.updateMenu(id, updated));
     }
 
@@ -107,7 +106,10 @@ public class MenuEntryController {
                 : List.of());
         m.put("leftover", entry.getLeftover());
         m.put("leftoverFromDate", entry.getLeftoverFromDate() != null ? entry.getLeftoverFromDate().toString() : null);
-        m.put("sides", entry.getSides());
+        String sides = meal != null && meal.getSides() != null && !meal.getSides().isEmpty()
+                ? meal.getSides().stream().map(Side::getName).collect(Collectors.joining(", "))
+                : null;
+        m.put("sides", sides);
         return m;
     }
 
@@ -115,6 +117,6 @@ public class MenuEntryController {
             String mealDate, String dayOfWeek, String mealName,
             String recipeLink, String notes, Boolean confirmed,
             Boolean leftover, String leftoverFromDate, Boolean shared,
-            Integer minTemp, Integer maxTemp, List<String> seasons, String sides
+            Integer minTemp, Integer maxTemp, List<String> seasons
     ) {}
 }

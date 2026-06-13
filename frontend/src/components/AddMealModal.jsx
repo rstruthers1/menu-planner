@@ -1,13 +1,19 @@
 import { useState, useEffect } from 'react';
 import {
     Alert, AlertDescription, AlertIcon, AlertTitle,
-    Box, Button, Checkbox, CheckboxGroup, FormControl, FormHelperText, FormLabel,
+    Box, Button, Checkbox, CheckboxGroup, Divider, FormControl, FormHelperText, FormLabel,
     HStack, Input, Modal, ModalBody, ModalCloseButton, ModalContent,
     ModalFooter, ModalHeader, ModalOverlay, Stack, Text, Textarea, useToast,
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
+import TagInput from './TagInput';
 
-const EMPTY_FORM = { name: '', recipeLink: '', notes: '', shared: false, minTemp: '', maxTemp: '', seasons: [], keyIngredient: '' };
+const EMPTY_FORM = {
+    name: '', recipeLink: '', notes: '', shared: false,
+    minTemp: '', maxTemp: '', seasons: [],
+    recipe: { name: '', instructions: '', ingredients: [] },
+    sides: [],
+};
 
 function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
     const isEdit = !!editMeal;
@@ -28,7 +34,10 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
                 minTemp: editMeal.minTemp ?? '',
                 maxTemp: editMeal.maxTemp ?? '',
                 seasons: editMeal.seasons || [],
-                keyIngredient: editMeal.keyIngredient || '',
+                recipe: editMeal.recipe
+                    ? { name: editMeal.recipe.name || '', instructions: editMeal.recipe.instructions || '', ingredients: editMeal.recipe.ingredients || [] }
+                    : { name: '', instructions: '', ingredients: [] },
+                sides: editMeal.sides || [],
             });
         } else {
             setForm(EMPTY_FORM);
@@ -45,13 +54,21 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
         try {
             const url = isEdit ? `/api/meals/${editMeal.id}` : '/api/meals';
             const method = isEdit ? 'PUT' : 'POST';
+            const recipePayload = form.recipe.name.trim()
+                ? { name: form.recipe.name.trim(), instructions: form.recipe.instructions || null, ingredients: form.recipe.ingredients }
+                : null;
             const r = await authFetch(url, {
                 method,
                 body: JSON.stringify({
-                    ...form,
+                    name: form.name,
+                    recipeLink: form.recipeLink,
+                    notes: form.notes,
+                    shared: form.shared,
                     minTemp: form.minTemp !== '' ? Number(form.minTemp) : null,
                     maxTemp: form.maxTemp !== '' ? Number(form.maxTemp) : null,
                     seasons: form.seasons,
+                    recipe: recipePayload,
+                    sides: form.sides,
                 }),
             });
             const saved = await r.json();
@@ -112,11 +129,6 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
                             )}
 
                             <FormControl>
-                                <FormLabel>Key Ingredient <Text as="span" fontSize="xs" color="gray.400" fontWeight="normal">— optional</Text></FormLabel>
-                                <Input name="keyIngredient" value={form.keyIngredient} onChange={handleChange} placeholder="e.g. shredded chicken" />
-                                <FormHelperText fontSize="xs">Used to suggest other meals that use the same ingredient</FormHelperText>
-                            </FormControl>
-                            <FormControl>
                                 <FormLabel>Recipe Link</FormLabel>
                                 <Input name="recipeLink" value={form.recipeLink} onChange={handleChange} placeholder="https://…" />
                             </FormControl>
@@ -124,6 +136,59 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
                                 <FormLabel>Notes</FormLabel>
                                 <Textarea name="notes" value={form.notes} onChange={handleChange} rows={2} resize="vertical" />
                             </FormControl>
+
+                            <Divider />
+
+                            <Box>
+                                <Text fontWeight="semibold" fontSize="sm" mb={3}>Sides <Text as="span" fontSize="xs" color="gray.400" fontWeight="normal">— optional</Text></Text>
+                                <TagInput
+                                    value={form.sides}
+                                    onChange={sides => setForm(f => ({ ...f, sides }))}
+                                    placeholder="Type a side and press Enter…"
+                                    suggestionsUrl="/api/meals/side-suggestions"
+                                />
+                            </Box>
+
+                            <Divider />
+
+                            <Box>
+                                <Text fontWeight="semibold" fontSize="sm" mb={3}>Recipe <Text as="span" fontSize="xs" color="gray.400" fontWeight="normal">— optional</Text></Text>
+                                <Stack spacing={3}>
+                                    <FormControl>
+                                        <FormLabel fontSize="sm">Recipe Name</FormLabel>
+                                        <Input
+                                            size="sm"
+                                            placeholder="e.g. Mom's Pasta Sauce"
+                                            value={form.recipe.name}
+                                            onChange={e => setForm(f => ({ ...f, recipe: { ...f.recipe, name: e.target.value } }))}
+                                        />
+                                    </FormControl>
+                                    <FormControl>
+                                        <FormLabel fontSize="sm">Instructions</FormLabel>
+                                        <Textarea
+                                            size="sm"
+                                            placeholder="Step-by-step instructions…"
+                                            value={form.recipe.instructions}
+                                            onChange={e => setForm(f => ({ ...f, recipe: { ...f.recipe, instructions: e.target.value } }))}
+                                            rows={4}
+                                            resize="vertical"
+                                        />
+                                    </FormControl>
+                                    <FormControl>
+                                        <FormLabel fontSize="sm">Ingredients</FormLabel>
+                                        <FormHelperText fontSize="xs" mt={0} mb={2}>Press Enter or comma to add each ingredient.</FormHelperText>
+                                        <TagInput
+                                            value={form.recipe.ingredients}
+                                            onChange={ings => setForm(f => ({ ...f, recipe: { ...f.recipe, ingredients: ings } }))}
+                                            placeholder="e.g. shredded chicken…"
+                                            suggestionsUrl="/api/meals/ingredient-suggestions"
+                                        />
+                                    </FormControl>
+                                </Stack>
+                            </Box>
+
+                            <Divider />
+
                             <FormControl>
                                 <FormLabel fontSize="sm">Temperature Range (°F) — optional</FormLabel>
                                 <HStack>
