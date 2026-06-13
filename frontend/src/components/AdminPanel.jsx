@@ -4,8 +4,12 @@ import {
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 
+const PAGE_SIZE = 20;
+
 function AdminPanel() {
     const [globals, setGlobals] = useState([]);
+    const [search, setSearch] = useState('');
+    const [page, setPage] = useState(0);
     const [newName, setNewName] = useState('');
     const [adding, setAdding] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
@@ -18,6 +22,10 @@ function AdminPanel() {
             .then(setGlobals)
             .catch(console.error);
     }, []);
+
+    const filtered = globals.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
+    const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+    const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
     const handleAdd = async (e) => {
         e.preventDefault();
@@ -38,6 +46,8 @@ function AdminPanel() {
             const saved = await r.json();
             setGlobals(prev => [...prev, saved].sort((a, b) => a.name.localeCompare(b.name)));
             setNewName('');
+            setSearch('');
+            setPage(0);
             inputRef.current?.focus();
         } catch {
             toast({ title: 'Add failed', status: 'error', duration: 3000, isClosable: true });
@@ -54,6 +64,7 @@ function AdminPanel() {
                 return;
             }
             setGlobals(prev => prev.filter(i => i.id !== ing.id));
+            if (page > 0 && paginated.length === 1) setPage(p => p - 1);
         } catch {
             toast({ title: 'Delete failed', status: 'error', duration: 3000, isClosable: true });
         } finally {
@@ -69,7 +80,7 @@ function AdminPanel() {
             </Text>
 
             <form onSubmit={handleAdd}>
-                <HStack mb={4}>
+                <HStack mb={3}>
                     <Input
                         ref={inputRef}
                         size="sm"
@@ -83,16 +94,24 @@ function AdminPanel() {
                 </HStack>
             </form>
 
+            <Input
+                size="sm"
+                placeholder="Search ingredients…"
+                value={search}
+                onChange={e => { setSearch(e.target.value); setPage(0); }}
+                mb={3}
+            />
+
             <Divider mb={3} />
 
-            {globals.length === 0 && (
+            {filtered.length === 0 && (
                 <Text fontSize="sm" color="gray.400" textAlign="center" py={6}>
-                    No global ingredients yet.
+                    {search ? 'No ingredients match your search.' : 'No global ingredients yet.'}
                 </Text>
             )}
 
             <VStack align="stretch" spacing={0}>
-                {globals.map(ing => (
+                {paginated.map(ing => (
                     <HStack
                         key={ing.id}
                         py={2}
@@ -117,6 +136,14 @@ function AdminPanel() {
                     </HStack>
                 ))}
             </VStack>
+
+            {totalPages > 1 && (
+                <HStack mt={3} justify="center" spacing={3}>
+                    <Button size="sm" onClick={() => setPage(p => p - 1)} isDisabled={page === 0}>Prev</Button>
+                    <Text fontSize="sm" color="gray.600">Page {page + 1} of {totalPages}</Text>
+                    <Button size="sm" onClick={() => setPage(p => p + 1)} isDisabled={page >= totalPages - 1}>Next</Button>
+                </HStack>
+            )}
         </Box>
     );
 }
