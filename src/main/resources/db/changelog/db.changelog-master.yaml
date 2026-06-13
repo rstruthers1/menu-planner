@@ -13,3 +13,5 @@ databaseChangeLog:
       file: db/changelog/006-add-recipe-household-servings.sql
   - include:
       file: db/changelog/007-add-admin-flag.sql
+  - include:
+      file: db/changelog/008-seed-global-ingredients.sql

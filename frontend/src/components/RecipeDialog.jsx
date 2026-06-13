@@ -5,7 +5,7 @@ import {
     Select, Stack, Textarea, useToast,
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
-import TagInput from './TagInput';
+import IngredientRows from './IngredientRows';
 
 const EMPTY = { name: '', servings: '', instructions: '', ingredients: [], mealId: '' };
 
@@ -113,13 +113,9 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, onSaved }) {
 
                             <FormControl>
                                 <FormLabel fontSize="sm">Ingredients</FormLabel>
-                                <FormHelperText fontSize="xs" mt={0} mb={2}>
-                                    Press Enter or comma to add each ingredient.
-                                </FormHelperText>
-                                <TagInput
+                                <IngredientRows
                                     value={form.ingredients}
                                     onChange={ings => setForm(f => ({ ...f, ingredients: ings }))}
-                                    placeholder="e.g. 2 cups flour…"
                                     suggestionsUrl="/api/ingredients"
                                 />
                             </FormControl>

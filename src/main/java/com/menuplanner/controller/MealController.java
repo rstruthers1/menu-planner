@@ -56,7 +56,7 @@ public class MealController {
     public List<String> ingredientSuggestions(@RequestParam(defaultValue = "") String q,
                                                @AuthenticationPrincipal AppUserDetails userDetails) {
         return ingredientRepository
-                .findByHouseholdAndNameContainingIgnoreCaseOrderByName(userDetails.getHousehold(), q)
+                .findForHouseholdWithQuery(userDetails.getHousehold(), q)
                 .stream().map(Ingredient::getName).collect(Collectors.toList());
     }
 

@@ -7,6 +7,7 @@ import {
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 import TagInput from './TagInput';
+import IngredientRows from './IngredientRows';
 
 const EMPTY_FORM = {
     name: '', recipeLink: '', notes: '', shared: false,
@@ -176,11 +177,9 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
                                     </FormControl>
                                     <FormControl>
                                         <FormLabel fontSize="sm">Ingredients</FormLabel>
-                                        <FormHelperText fontSize="xs" mt={0} mb={2}>Press Enter or comma to add each ingredient.</FormHelperText>
-                                        <TagInput
+                                        <IngredientRows
                                             value={form.recipe.ingredients}
                                             onChange={ings => setForm(f => ({ ...f, recipe: { ...f.recipe, ingredients: ings } }))}
-                                            placeholder="e.g. shredded chicken…"
                                             suggestionsUrl="/api/ingredients"
                                         />
                                     </FormControl>
