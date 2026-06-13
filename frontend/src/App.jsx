@@ -5,6 +5,7 @@ import {
 import WeekPlanner from './components/WeekPlanner';
 import History from './components/History';
 import MealLibrary from './components/MealLibrary';
+import RecipeList from './components/RecipeList';
 import Login from './components/Login';
 import { authFetch } from './utils/api';
 
@@ -123,6 +124,7 @@ function App() {
                     <Tab>Planner</Tab>
                     <Tab>History</Tab>
                     <Tab>Meal Library</Tab>
+                    <Tab>Recipes</Tab>
                 </TabList>
                 <TabPanels>
                     <TabPanel p={0}>
@@ -146,6 +148,9 @@ function App() {
                     </TabPanel>
                     <TabPanel p={0} pt={2}>
                         <MealLibrary />
+                    </TabPanel>
+                    <TabPanel p={0} pt={2}>
+                        <RecipeList mealLibrary={mealLibrary} />
                     </TabPanel>
                 </TabPanels>
             </Tabs>

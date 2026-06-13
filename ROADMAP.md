@@ -42,6 +42,15 @@
 - **Jump-to-date in history** — date picker + Jump button navigates directly to the page containing that date (`GET /api/history/page-for-date`)
 - **Paginated Meal Library** — client-side pagination (15 per page); search resets to page 1
 
+## Phase 2.8 — Recipe Library ✅ done
+- **Standalone recipes** — recipes are their own entity (name, servings, instructions, ingredients) and no longer required to be tied to a meal; `recipe.meal_id` is optional
+- **Recipes tab** — searchable, paginated list of all recipes visible to the household (both standalone and meal-linked)
+- **Add / edit / delete** — full CRUD via a dedicated dialog; ingredients use the same TagInput autocomplete as the meal editor
+- **Link to meal** — a recipe can be associated with a meal from your library; backend enforces one recipe per meal and household ownership
+- **Scale ingredients** — enter a target serving count in the recipe viewer and a multiplier is shown (e.g. ×2); ingredient strings are displayed as-is since quantities are free-text, not structured
+- **Migration 006** — adds `household_id` and `servings` to the `recipe` table; backfills `household_id` from linked meal for existing recipes
+- **Known limitation:** auto-scaling ingredient amounts requires structured quantity + unit fields — deferred to backlog
+
 ## Phase 3 — Household Invite Flow
 - Currently `register` auto-assigns to the first household (fine for one household)
 - Proper invite codes: one person creates household, shares code, others join

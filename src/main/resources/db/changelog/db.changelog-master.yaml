@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/004-rollback-key-ingredient-and-sides.sql
   - include:
       file: db/changelog/005-add-recipe-ingredient-side-tables.sql
+  - include:
+      file: db/changelog/006-add-recipe-household-servings.sql

@@ -23,7 +23,12 @@ public class Recipe {
     @JoinColumn(name = "meal_id")
     private Meal meal;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "household_id")
+    private Household household;
+
     private String name;
+    private Integer servings;
 
     @Column(columnDefinition = "text")
     private String instructions;
