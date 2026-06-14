@@ -152,6 +152,11 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealL
                         + {entry.sides}
                     </Text>
                 )}
+                {entry?.cookbookName && (
+                    <Text fontSize="xs" color="gray.400" lineHeight="1.2" mt="1px">
+                        {entry.cookbookName}
+                    </Text>
+                )}
                 {(() => {
                     const warn = getMealWarning(entry?.mealName, mealLibrary, weather, dateStr);
                     return warn ? (

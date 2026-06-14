@@ -1,9 +1,7 @@
 package com.menuplanner.controller;
 
-import com.menuplanner.domain.Household;
-import com.menuplanner.domain.Meal;
-import com.menuplanner.domain.MenuEntry;
-import com.menuplanner.domain.Side;
+import com.menuplanner.domain.*;
+
 import com.menuplanner.security.AppUserDetails;
 import com.menuplanner.service.MenuEntryService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -110,6 +108,10 @@ public class MenuEntryController {
                 ? meal.getSides().stream().map(Side::getName).collect(Collectors.joining(", "))
                 : null;
         m.put("sides", sides);
+        Recipe recipe = meal != null ? meal.getRecipe() : null;
+        m.put("recipeName", recipe != null ? recipe.getName() : null);
+        Cookbook cookbook = recipe != null ? recipe.getCookbook() : null;
+        m.put("cookbookName", cookbook != null ? cookbook.getName() : null);
         return m;
     }
 

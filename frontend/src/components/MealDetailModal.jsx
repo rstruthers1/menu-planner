@@ -3,7 +3,7 @@ import {
     Alert, AlertDescription, AlertIcon, AlertTitle,
     Box, Button, Checkbox, CheckboxGroup, Collapse, FormControl, FormHelperText, FormLabel,
     HStack, Input, Modal, ModalBody, ModalCloseButton, ModalContent,
-    ModalFooter, ModalHeader, ModalOverlay, Stack, Text, Textarea, useToast,
+    ModalFooter, ModalHeader, ModalOverlay, Stack, Tag, TagLabel, Text, Textarea, useToast,
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 
@@ -130,6 +130,22 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
                                         </Button>
                                     </HStack>
                                 </Alert>
+                            )}
+
+                            {mode === 'edit' && (entry?.recipeName || entry?.cookbookName) && (
+                                <Box bg="gray.50" borderRadius="md" px={3} py={2}>
+                                    <Text fontSize="xs" color="gray.500" mb={1}>Linked recipe</Text>
+                                    {entry.recipeName && (
+                                        <HStack spacing={2} align="center">
+                                            <Text fontSize="sm" fontWeight="medium">{entry.recipeName}</Text>
+                                            {entry.cookbookName && (
+                                                <Tag size="sm" variant="subtle" colorScheme="orange" fontSize="10px">
+                                                    <TagLabel>{entry.cookbookName}</TagLabel>
+                                                </Tag>
+                                            )}
+                                        </HStack>
+                                    )}
+                                </Box>
                             )}
 
                             <FormControl>
