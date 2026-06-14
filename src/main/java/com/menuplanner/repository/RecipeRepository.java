@@ -1,5 +1,6 @@
 package com.menuplanner.repository;
 
+import com.menuplanner.domain.Cookbook;
 import com.menuplanner.domain.Household;
 import com.menuplanner.domain.Meal;
 import com.menuplanner.domain.Recipe;
@@ -14,6 +15,7 @@ import java.util.Optional;
 @Repository
 public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     Optional<Recipe> findByMeal(Meal meal);
+    long countByCookbook(Cookbook cookbook);
 
     @Query("SELECT r FROM Recipe r WHERE r.household = :household OR (r.meal IS NOT NULL AND r.meal.household = :household) ORDER BY r.name")
     List<Recipe> findAllForHousehold(@Param("household") Household household);

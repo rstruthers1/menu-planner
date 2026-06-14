@@ -148,6 +148,7 @@ public class MealController {
                     if (ingName == null || ingName.isBlank()) continue;
                     String trimmed = ingName.trim();
                     Ingredient ing = ingredientRepository.findByNameIgnoreCaseAndHousehold(trimmed, household)
+                            .or(() -> ingredientRepository.findByNameIgnoreCaseAndHouseholdIsNull(trimmed))
                             .orElseGet(() -> {
                                 Ingredient newIng = new Ingredient();
                                 newIng.setName(trimmed);

@@ -1,22 +1,27 @@
 import { useState, useEffect } from 'react';
 import {
-    Button, FormControl, FormHelperText, FormLabel, Input, Modal, ModalBody,
+    Button, FormControl, FormHelperText, FormLabel, HStack, Input, Modal, ModalBody,
     ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalOverlay,
     Select, Stack, Textarea, useToast,
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 import IngredientRows from './IngredientRows';
 
-const EMPTY = { name: '', servings: '', instructions: '', ingredients: [], mealId: '' };
+const EMPTY = { name: '', servings: '', instructions: '', ingredients: [], mealId: '', cookbookId: '' };
 
-function RecipeDialog({ isOpen, onClose, editRecipe, meals, onSaved }) {
+function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, onCookbookCreated }) {
     const isEdit = !!editRecipe;
     const [form, setForm] = useState(EMPTY);
+    const [addingCookbook, setAddingCookbook] = useState(false);
+    const [newCookbookName, setNewCookbookName] = useState('');
+    const [savingCookbook, setSavingCookbook] = useState(false);
     const [loading, setLoading] = useState(false);
     const toast = useToast();
 
     useEffect(() => {
         if (!isOpen) return;
+        setAddingCookbook(false);
+        setNewCookbookName('');
         if (isEdit) {
             setForm({
                 name: editRecipe.name || '',
@@ -24,6 +29,7 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, onSaved }) {
                 instructions: editRecipe.instructions || '',
                 ingredients: editRecipe.ingredients || [],
                 mealId: editRecipe.mealId ?? '',
+                cookbookId: editRecipe.cookbookId ?? '',
             });
         } else {
             setForm(EMPTY);
@@ -31,6 +37,33 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, onSaved }) {
     }, [isOpen, editRecipe, isEdit]);
 
     const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+
+    const handleCreateCookbook = async () => {
+        if (!newCookbookName.trim()) return;
+        setSavingCookbook(true);
+        try {
+            const r = await authFetch('/api/cookbooks', {
+                method: 'POST',
+                body: JSON.stringify({ name: newCookbookName.trim() }),
+            });
+            if (!r.ok) {
+                const text = await r.text().catch(() => '');
+                let msg = text;
+                try { msg = JSON.parse(text).message || text; } catch { /* raw */ }
+                toast({ title: 'Could not create cookbook', description: msg, status: 'error', duration: 4000, isClosable: true });
+                return;
+            }
+            const saved = await r.json();
+            onCookbookCreated(saved);
+            setForm(f => ({ ...f, cookbookId: String(saved.id) }));
+            setNewCookbookName('');
+            setAddingCookbook(false);
+        } catch {
+            toast({ title: 'Could not create cookbook', status: 'error', duration: 3000, isClosable: true });
+        } finally {
+            setSavingCookbook(false);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -45,8 +78,9 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, onSaved }) {
                     name: form.name.trim(),
                     servings: form.servings !== '' ? Number(form.servings) : null,
                     instructions: form.instructions || null,
-                    ingredients: form.ingredients,
+                    ingredients: form.ingredients.filter(i => i.trim()),
                     mealId: form.mealId !== '' ? Number(form.mealId) : null,
+                    cookbookId: form.cookbookId !== '' ? Number(form.cookbookId) : null,
                 }),
             });
             if (!r.ok) {
@@ -78,6 +112,48 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, onSaved }) {
                             <FormControl isRequired>
                                 <FormLabel>Recipe Name</FormLabel>
                                 <Input name="name" value={form.name} onChange={handleChange} autoFocus />
+                            </FormControl>
+
+                            <FormControl>
+                                <FormLabel fontSize="sm">Cookbook — optional</FormLabel>
+                                {addingCookbook ? (
+                                    <HStack>
+                                        <Input
+                                            size="sm"
+                                            placeholder="Cookbook name…"
+                                            value={newCookbookName}
+                                            onChange={e => setNewCookbookName(e.target.value)}
+                                            autoFocus
+                                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleCreateCookbook(); } if (e.key === 'Escape') setAddingCookbook(false); }}
+                                        />
+                                        <Button size="sm" colorScheme="green" onClick={handleCreateCookbook} isLoading={savingCookbook} flexShrink={0}>
+                                            Create
+                                        </Button>
+                                        <Button size="sm" variant="ghost" onClick={() => setAddingCookbook(false)} flexShrink={0}>
+                                            Cancel
+                                        </Button>
+                                    </HStack>
+                                ) : (
+                                    <HStack>
+                                        <Select
+                                            name="cookbookId"
+                                            value={form.cookbookId}
+                                            onChange={handleChange}
+                                            size="sm"
+                                            placeholder="No cookbook"
+                                        >
+                                            {cookbooks.map(cb => (
+                                                <option key={cb.id} value={cb.id}>
+                                                    {cb.name}{cb.global ? ' ✦' : ''}
+                                                </option>
+                                            ))}
+                                        </Select>
+                                        <Button size="sm" variant="outline" onClick={() => setAddingCookbook(true)} flexShrink={0} title="Add new cookbook">
+                                            +
+                                        </Button>
+                                    </HStack>
+                                )}
+                                <FormHelperText fontSize="xs" mt={1}>✦ = global cookbook</FormHelperText>
                             </FormControl>
 
                             <FormControl>

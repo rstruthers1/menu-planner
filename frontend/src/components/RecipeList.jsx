@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
     Badge, Box, Button, Divider, HStack, Input, Modal, ModalBody, ModalCloseButton,
-    ModalContent, ModalHeader, ModalOverlay, Tag, TagLabel, Text, useDisclosure,
-    useToast, VStack,
+    ModalContent, ModalFooter, ModalHeader, ModalOverlay, Select, Tag, TagLabel, Text,
+    useDisclosure, useToast, VStack,
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 import RecipeDialog from './RecipeDialog';
+import CookbookManager from './CookbookManager';
 
 const PAGE_SIZE = 15;
 
@@ -86,13 +87,16 @@ function ScaleModal({ recipe, isOpen, onClose }) {
 
 function RecipeList({ mealLibrary }) {
     const [recipes, setRecipes] = useState([]);
+    const [cookbooks, setCookbooks] = useState([]);
     const [search, setSearch] = useState('');
+    const [cookbookFilter, setCookbookFilter] = useState('');
     const [page, setPage] = useState(0);
     const [editRecipe, setEditRecipe] = useState(null);
     const [viewRecipe, setViewRecipe] = useState(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
     const { isOpen: isDialogOpen, onOpen: onDialogOpen, onClose: onDialogClose } = useDisclosure();
     const { isOpen: isScaleOpen, onOpen: onScaleOpen, onClose: onScaleClose } = useDisclosure();
+    const { isOpen: isCookbookMgrOpen, onOpen: onCookbookMgrOpen, onClose: onCookbookMgrClose } = useDisclosure();
     const toast = useToast();
 
     useEffect(() => {
@@ -100,12 +104,22 @@ function RecipeList({ mealLibrary }) {
             .then(r => r.json())
             .then(data => setRecipes(data))
             .catch(console.error);
+        authFetch('/api/cookbooks')
+            .then(r => r.json())
+            .then(data => setCookbooks(data))
+            .catch(console.error);
     }, []);
 
-    const filtered = recipes.filter(r =>
-        r.name.toLowerCase().includes(search.toLowerCase()) ||
-        (r.mealName && r.mealName.toLowerCase().includes(search.toLowerCase()))
-    );
+    const filtered = recipes.filter(r => {
+        const matchesSearch = r.name.toLowerCase().includes(search.toLowerCase()) ||
+            (r.mealName && r.mealName.toLowerCase().includes(search.toLowerCase()));
+        const matchesCookbook = cookbookFilter === ''
+            ? true
+            : cookbookFilter === '__none__'
+                ? r.cookbookId == null
+                : String(r.cookbookId) === cookbookFilter;
+        return matchesSearch && matchesCookbook;
+    });
     const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
     const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
@@ -152,23 +166,55 @@ function RecipeList({ mealLibrary }) {
         onScaleOpen();
     };
 
+    const handleCookbookCreated = (cb) => {
+        setCookbooks(prev => [...prev, cb].sort((a, b) => {
+            if (a.global !== b.global) return a.global ? 1 : -1;
+            return a.name.localeCompare(b.name);
+        }));
+    };
+
+    const handleCookbookDeleted = (id) => {
+        setCookbooks(prev => prev.filter(c => c.id !== id));
+    };
+
     return (
         <Box>
-            <HStack mb={4}>
+            <HStack mb={3} spacing={2}>
                 <Input
                     placeholder="Search recipes…"
                     size="sm"
                     value={search}
                     onChange={e => { setSearch(e.target.value); setPage(0); }}
                 />
-                <Button size="sm" colorScheme="green" onClick={() => { setEditRecipe(null); onDialogOpen(); }} flexShrink={0}>
+                <Select
+                    size="sm"
+                    value={cookbookFilter}
+                    onChange={e => { setCookbookFilter(e.target.value); setPage(0); }}
+                    placeholder="All cookbooks"
+                    flexShrink={0}
+                    w="180px"
+                >
+                    <option value="__none__">No cookbook</option>
+                    {cookbooks.map(cb => (
+                        <option key={cb.id} value={String(cb.id)}>
+                            {cb.name}{cb.global ? ' ✦' : ''}
+                        </option>
+                    ))}
+                </Select>
+            </HStack>
+
+            <HStack mb={4} justify="space-between">
+                <Button size="sm" colorScheme="green" onClick={() => { setEditRecipe(null); onDialogOpen(); }}>
                     + Add recipe
+                </Button>
+                <Button size="sm" variant="outline" onClick={onCookbookMgrOpen}>
+                    Manage cookbooks
                 </Button>
             </HStack>
 
             {filtered.length === 0 && (
                 <Text fontSize="sm" color="gray.400" textAlign="center" py={8}>
-                    {search ? 'No recipes match your search.' : 'No recipes yet.'}
+                    {search || cookbookFilter ? 'No recipes match your filters.' : 'No recipes yet.'}
                 </Text>
             )}
 
@@ -199,6 +245,11 @@ function RecipeList({ mealLibrary }) {
                                         <Text fontSize="xs" color="gray.400">
                                             {recipe.servings} servings
                                         </Text>
+                                    )}
+                                    {recipe.cookbookName && (
+                                        <Tag size="sm" variant="subtle" colorScheme="orange" fontSize="10px">
+                                            <TagLabel>{recipe.cookbookName}</TagLabel>
+                                        </Tag>
                                     )}
                                 </HStack>
 
@@ -250,12 +301,21 @@ function RecipeList({ mealLibrary }) {
                 onClose={handleDialogClose}
                 editRecipe={editRecipe}
                 meals={mealLibrary}
+                cookbooks={cookbooks}
                 onSaved={handleSaved}
+                onCookbookCreated={handleCookbookCreated}
             />
             <ScaleModal
                 recipe={viewRecipe}
                 isOpen={isScaleOpen}
                 onClose={() => { onScaleClose(); setViewRecipe(null); }}
+            />
+            <CookbookManager
+                isOpen={isCookbookMgrOpen}
+                onClose={onCookbookMgrClose}
+                cookbooks={cookbooks}
+                onCreated={handleCookbookCreated}
+                onDeleted={handleCookbookDeleted}
             />
         </Box>
     );

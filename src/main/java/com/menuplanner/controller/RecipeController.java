@@ -18,12 +18,14 @@ public class RecipeController {
     private final RecipeRepository recipeRepository;
     private final IngredientRepository ingredientRepository;
     private final MealRepository mealRepository;
+    private final CookbookRepository cookbookRepository;
 
     public RecipeController(RecipeRepository recipeRepository, IngredientRepository ingredientRepository,
-                            MealRepository mealRepository) {
+                            MealRepository mealRepository, CookbookRepository cookbookRepository) {
         this.recipeRepository = recipeRepository;
         this.ingredientRepository = ingredientRepository;
         this.mealRepository = mealRepository;
+        this.cookbookRepository = cookbookRepository;
     }
 
     @GetMapping
@@ -69,6 +71,7 @@ public class RecipeController {
                 if (ingName == null || ingName.isBlank()) continue;
                 String trimmed = ingName.trim();
                 Ingredient ing = ingredientRepository.findByNameIgnoreCaseAndHousehold(trimmed, household)
+                        .or(() -> ingredientRepository.findByNameIgnoreCaseAndHouseholdIsNull(trimmed))
                         .orElseGet(() -> {
                             Ingredient newIng = new Ingredient();
                             newIng.setName(trimmed);
@@ -92,6 +95,14 @@ public class RecipeController {
         } else {
             recipe.setMeal(null);
         }
+
+        if (req.cookbookId() != null) {
+            Cookbook cookbook = cookbookRepository.findById(req.cookbookId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cookbook not found"));
+            recipe.setCookbook(cookbook);
+        } else {
+            recipe.setCookbook(null);
+        }
     }
 
     private Map<String, Object> toResponse(Recipe r) {
@@ -104,8 +115,12 @@ public class RecipeController {
         Meal meal = r.getMeal();
         m.put("mealId", meal != null ? meal.getId() : null);
         m.put("mealName", meal != null ? meal.getName() : null);
+        Cookbook cookbook = r.getCookbook();
+        m.put("cookbookId", cookbook != null ? cookbook.getId() : null);
+        m.put("cookbookName", cookbook != null ? cookbook.getName() : null);
         return m;
     }
 
-    record RecipeRequest(String name, Integer servings, String instructions, List<String> ingredients, Long mealId) {}
+    record RecipeRequest(String name, Integer servings, String instructions,
+                         List<String> ingredients, Long mealId, Long cookbookId) {}
 }
