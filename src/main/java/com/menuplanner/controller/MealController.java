@@ -107,6 +107,46 @@ public class MealController {
         return toResponse(meal);
     }
 
+    @PatchMapping("/{id}/recipe")
+    public Map<String, Object> linkRecipe(@PathVariable Long id,
+                                           @RequestBody Map<String, Object> body,
+                                           @AuthenticationPrincipal AppUserDetails userDetails) {
+        Meal meal = mealRepository.findByIdForHousehold(id, userDetails.getHousehold().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Meal not found"));
+
+        Object rawId = body.get("recipeId");
+        if (rawId == null) {
+            recipeRepository.findByMeal(meal).ifPresent(r -> { r.setMeal(null); recipeRepository.save(r); });
+            meal.setRecipe(null);
+            mealRepository.save(meal);
+            return Map.of("recipeId", "", "recipeName", "", "cookbookName", "");
+        }
+
+        Long recipeId = ((Number) rawId).longValue();
+        Recipe recipe = recipeRepository.findByIdForHousehold(recipeId, userDetails.getHousehold().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
+
+        if (recipe.getMeal() != null && !recipe.getMeal().getId().equals(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "\"" + recipe.getName() + "\" is already linked to \"" + recipe.getMeal().getName() + "\".");
+        }
+
+        recipeRepository.findByMeal(meal).ifPresent(r -> {
+            if (!r.getId().equals(recipeId)) { r.setMeal(null); recipeRepository.save(r); }
+        });
+
+        recipe.setMeal(meal);
+        meal.setRecipe(recipe);
+        recipeRepository.save(recipe);
+        mealRepository.save(meal);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("recipeId", recipe.getId());
+        result.put("recipeName", recipe.getName());
+        result.put("cookbookName", recipe.getCookbook() != null ? recipe.getCookbook().getName() : null);
+        return result;
+    }
+
     @DeleteMapping("/{id}")
     public void deleteMeal(@PathVariable Long id,
                            @AuthenticationPrincipal AppUserDetails userDetails) {

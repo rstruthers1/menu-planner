@@ -3,7 +3,7 @@ import {
     Alert, AlertDescription, AlertIcon, AlertTitle,
     Box, Button, Checkbox, CheckboxGroup, Collapse, FormControl, FormHelperText, FormLabel,
     HStack, Input, Modal, ModalBody, ModalCloseButton, ModalContent,
-    ModalFooter, ModalHeader, ModalOverlay, Stack, Tag, TagLabel, Text, Textarea, useToast,
+    ModalFooter, ModalHeader, ModalOverlay, Select, Stack, Tag, TagLabel, Text, Textarea, useToast,
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 
@@ -11,8 +11,9 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 
 function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSaved }) {
     const [localDateStr, setLocalDateStr] = useState(dateStr || '');
-    const [form, setForm] = useState({ mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false, minTemp: '', maxTemp: '', seasons: [] });
-    const [dupWarning, setDupWarning] = useState(null); // null | 'household' | 'shared'
+    const [form, setForm] = useState({ mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false, minTemp: '', maxTemp: '', seasons: [], recipeId: null });
+    const [dupWarning, setDupWarning] = useState(null);
+    const [recipes, setRecipes] = useState([]);
     const toast = useToast();
 
     useEffect(() => {
@@ -20,10 +21,18 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
         setLocalDateStr(dateStr || '');
         setDupWarning(null);
         setForm(mode === 'edit' && entry
-            ? { mealName: entry.mealName || '', recipeLink: entry.recipeLink || '', notes: entry.notes || '', confirmed: entry.confirmed ?? false, leftover: entry.leftover ?? false, leftoverFromDate: entry.leftoverFromDate || '', shared: entry.shared ?? false, minTemp: entry.minTemp ?? '', maxTemp: entry.maxTemp ?? '', seasons: entry.seasons || [] }
-            : { mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false, minTemp: '', maxTemp: '', seasons: [] }
+            ? { mealName: entry.mealName || '', recipeLink: entry.recipeLink || '', notes: entry.notes || '', confirmed: entry.confirmed ?? false, leftover: entry.leftover ?? false, leftoverFromDate: entry.leftoverFromDate || '', shared: entry.shared ?? false, minTemp: entry.minTemp ?? '', maxTemp: entry.maxTemp ?? '', seasons: entry.seasons || [], recipeId: entry.recipeId ?? null }
+            : { mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false, minTemp: '', maxTemp: '', seasons: [], recipeId: null }
         );
     }, [isOpen, entry, mode, dateStr]);
+
+    useEffect(() => {
+        if (!isOpen || mode !== 'edit') return;
+        authFetch('/api/recipes')
+            .then(r => r.json())
+            .then(setRecipes)
+            .catch(console.error);
+    }, [isOpen, mode]);
 
     const handleChange = (e) => {
         if (e.target.name === 'mealName') setDupWarning(null);
@@ -56,6 +65,32 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
             const r = await authFetch(url, { method, body: JSON.stringify(body) });
             const saved = await r.json();
             setDupWarning(null);
+
+            // Link/unlink recipe if changed
+            const originalRecipeId = entry?.recipeId ?? null;
+            const newRecipeId = form.recipeId;
+            if (mode === 'edit' && newRecipeId !== originalRecipeId && saved.mealId) {
+                try {
+                    const pr = await authFetch(`/api/meals/${saved.mealId}/recipe`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({ recipeId: newRecipeId }),
+                    });
+                    if (pr.ok) {
+                        const linked = await pr.json();
+                        saved.recipeId = linked.recipeId || null;
+                        saved.recipeName = linked.recipeName || null;
+                        saved.cookbookName = linked.cookbookName || null;
+                    } else {
+                        const text = await pr.text().catch(() => '');
+                        let msg = text;
+                        try { msg = JSON.parse(text).message || text; } catch { /* raw */ }
+                        toast({ title: 'Could not link recipe', description: msg, status: 'warning', duration: 4000, isClosable: true });
+                    }
+                } catch {
+                    toast({ title: 'Could not link recipe', status: 'warning', duration: 3000, isClosable: true });
+                }
+            }
+
             onSaved(saved);
             onClose();
         } catch {
@@ -132,20 +167,22 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
                                 </Alert>
                             )}
 
-                            {mode === 'edit' && (entry?.recipeName || entry?.cookbookName) && (
-                                <Box bg="gray.50" borderRadius="md" px={3} py={2}>
-                                    <Text fontSize="xs" color="gray.500" mb={1}>Linked recipe</Text>
-                                    {entry.recipeName && (
-                                        <HStack spacing={2} align="center">
-                                            <Text fontSize="sm" fontWeight="medium">{entry.recipeName}</Text>
-                                            {entry.cookbookName && (
-                                                <Tag size="sm" variant="subtle" colorScheme="orange" fontSize="10px">
-                                                    <TagLabel>{entry.cookbookName}</TagLabel>
-                                                </Tag>
-                                            )}
-                                        </HStack>
-                                    )}
-                                </Box>
+                            {mode === 'edit' && (
+                                <FormControl>
+                                    <FormLabel fontSize="sm">Linked recipe</FormLabel>
+                                    <Select
+                                        size="sm"
+                                        value={form.recipeId ?? ''}
+                                        onChange={e => setForm(f => ({ ...f, recipeId: e.target.value ? Number(e.target.value) : null }))}
+                                        placeholder="No recipe linked"
+                                    >
+                                        {recipes.map(rec => (
+                                            <option key={rec.id} value={rec.id}>
+                                                {rec.name}{rec.cookbookName ? ` — ${rec.cookbookName}` : ''}
+                                            </option>
+                                        ))}
+                                    </Select>
+                                </FormControl>
                             )}
 
                             <FormControl>
