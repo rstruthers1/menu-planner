@@ -17,9 +17,9 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     Optional<Recipe> findByMeal(Meal meal);
     long countByCookbook(Cookbook cookbook);
 
-    @Query("SELECT r FROM Recipe r WHERE r.household = :household OR (r.meal IS NOT NULL AND r.meal.household = :household) ORDER BY r.name")
+    @Query("SELECT r FROM Recipe r LEFT JOIN r.meal m WHERE r.household = :household OR (m IS NOT NULL AND m.household = :household) ORDER BY r.name")
     List<Recipe> findAllForHousehold(@Param("household") Household household);
 
-    @Query("SELECT r FROM Recipe r WHERE r.id = :id AND (r.household.id = :hid OR (r.meal IS NOT NULL AND r.meal.household.id = :hid))")
+    @Query("SELECT r FROM Recipe r LEFT JOIN r.meal m WHERE r.id = :id AND (r.household.id = :hid OR (m IS NOT NULL AND m.household.id = :hid))")
     Optional<Recipe> findByIdForHousehold(@Param("id") Long id, @Param("hid") Long hid);
 }
