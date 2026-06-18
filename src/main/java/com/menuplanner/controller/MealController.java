@@ -25,15 +25,17 @@ public class MealController {
     private final RecipeRepository recipeRepository;
     private final IngredientRepository ingredientRepository;
     private final SideRepository sideRepository;
+    private final CookbookRepository cookbookRepository;
 
     public MealController(MealRepository mealRepository, MenuEntryRepository menuEntryRepository,
                           RecipeRepository recipeRepository, IngredientRepository ingredientRepository,
-                          SideRepository sideRepository) {
+                          SideRepository sideRepository, CookbookRepository cookbookRepository) {
         this.mealRepository = mealRepository;
         this.menuEntryRepository = menuEntryRepository;
         this.recipeRepository = recipeRepository;
         this.ingredientRepository = ingredientRepository;
         this.sideRepository = sideRepository;
+        this.cookbookRepository = cookbookRepository;
     }
 
     @GetMapping
@@ -173,6 +175,12 @@ public class MealController {
         meal.setMaxTemp(req.maxTemp());
         meal.setSeasons(req.seasons() == null || req.seasons().isEmpty() ? null
                 : req.seasons().stream().filter(s -> s != null && !s.isBlank()).collect(Collectors.joining(",")));
+        if (req.cookbookId() != null) {
+            meal.setCookbook(cookbookRepository.findById(req.cookbookId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cookbook not found")));
+        } else {
+            meal.setCookbook(null);
+        }
     }
 
     private void applyRecipeAndSides(Meal meal, MealRequest req, Household household) {
@@ -252,6 +260,9 @@ public class MealController {
             resp.put("recipe", null);
         }
         resp.put("sides", m.getSides().stream().map(Side::getName).collect(Collectors.toList()));
+        Cookbook cookbook = m.getCookbook();
+        resp.put("cookbookId", cookbook != null ? cookbook.getId() : null);
+        resp.put("cookbookName", cookbook != null ? cookbook.getName() : null);
         return resp;
     }
 
@@ -259,5 +270,5 @@ public class MealController {
 
     record MealRequest(String name, String recipeLink, String notes, Boolean shared,
                        Integer minTemp, Integer maxTemp, List<String> seasons,
-                       RecipeRequest recipe, List<String> sides) {}
+                       RecipeRequest recipe, List<String> sides, Long cookbookId) {}
 }

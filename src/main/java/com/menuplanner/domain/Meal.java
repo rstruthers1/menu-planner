@@ -34,6 +34,10 @@ public class Meal {
     @Column(length = 50)
     private String seasons; // comma-separated: SPRING,SUMMER,FALL,WINTER; null = unrestricted
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cookbook_id")
+    private Cookbook cookbook;
+
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
     @OneToOne(mappedBy = "meal", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)

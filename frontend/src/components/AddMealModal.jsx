@@ -3,7 +3,7 @@ import {
     Alert, AlertDescription, AlertIcon, AlertTitle,
     Box, Button, Checkbox, CheckboxGroup, Divider, FormControl, FormHelperText, FormLabel,
     HStack, Input, Modal, ModalBody, ModalCloseButton, ModalContent,
-    ModalFooter, ModalHeader, ModalOverlay, Stack, Text, Textarea, useToast,
+    ModalFooter, ModalHeader, ModalOverlay, Select, Stack, Text, Textarea, useToast,
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 import TagInput from './TagInput';
@@ -14,11 +14,13 @@ const EMPTY_FORM = {
     minTemp: '', maxTemp: '', seasons: [],
     recipe: { name: '', instructions: '', ingredients: [] },
     sides: [],
+    cookbookId: '',
 };
 
 function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
     const isEdit = !!editMeal;
     const [form, setForm] = useState(EMPTY_FORM);
+    const [cookbooks, setCookbooks] = useState([]);
     const [dupWarning, setDupWarning] = useState(null);
     const [loading, setLoading] = useState(false);
     const toast = useToast();
@@ -39,11 +41,20 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
                     ? { name: editMeal.recipe.name || '', instructions: editMeal.recipe.instructions || '', ingredients: editMeal.recipe.ingredients || [] }
                     : { name: '', instructions: '', ingredients: [] },
                 sides: editMeal.sides || [],
+                cookbookId: editMeal.cookbookId != null ? String(editMeal.cookbookId) : '',
             });
         } else {
             setForm(EMPTY_FORM);
         }
     }, [isOpen, editMeal, isEdit]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        authFetch('/api/cookbooks')
+            .then(r => r.json())
+            .then(setCookbooks)
+            .catch(console.error);
+    }, [isOpen]);
 
     const handleChange = (e) => {
         if (e.target.name === 'name') setDupWarning(null);
@@ -70,6 +81,7 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
                     seasons: form.seasons,
                     recipe: recipePayload,
                     sides: form.sides,
+                    cookbookId: form.cookbookId !== '' ? Number(form.cookbookId) : null,
                 }),
             });
             const saved = await r.json();
@@ -108,6 +120,24 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
                             <FormControl isRequired>
                                 <FormLabel>Meal Name</FormLabel>
                                 <Input name="name" value={form.name} onChange={handleChange} autoFocus />
+                            </FormControl>
+
+                            <FormControl>
+                                <FormLabel fontSize="sm">Cookbook — optional</FormLabel>
+                                <Select
+                                    name="cookbookId"
+                                    value={form.cookbookId}
+                                    onChange={handleChange}
+                                    size="sm"
+                                    placeholder="No cookbook"
+                                >
+                                    {cookbooks.map(cb => (
+                                        <option key={cb.id} value={cb.id}>
+                                            {cb.name}{cb.global ? ' ✦' : ''}
+                                        </option>
+                                    ))}
+                                </Select>
+                                <FormHelperText fontSize="xs" mt={1}>✦ = global cookbook</FormHelperText>
                             </FormControl>
 
                             {dupWarning && (

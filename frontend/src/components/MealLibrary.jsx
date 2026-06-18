@@ -4,6 +4,7 @@ import {
     ModalContent, ModalHeader, ModalOverlay, Tag, TagLabel, Text, useDisclosure,
     useToast, VStack,
 } from '@chakra-ui/react';
+
 import AddMealModal from './AddMealModal';
 import { authFetch } from '../utils/api';
 
@@ -194,6 +195,12 @@ function MealLibrary() {
                                             </Tag>
                                         ))}
                                     </HStack>
+                                )}
+
+                                {meal.cookbookName && (
+                                    <Tag size="sm" variant="subtle" colorScheme="orange" fontSize="10px" mt="4px">
+                                        <TagLabel>{meal.cookbookName}</TagLabel>
+                                    </Tag>
                                 )}
 
                                 {meal.recipe && (
