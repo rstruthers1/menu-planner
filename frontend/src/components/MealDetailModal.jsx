@@ -3,40 +3,95 @@ import {
     Alert, AlertDescription, AlertIcon, AlertTitle,
     Box, Button, Checkbox, CheckboxGroup, Collapse, FormControl, FormHelperText, FormLabel,
     HStack, Input, Modal, ModalBody, ModalCloseButton, ModalContent,
-    ModalFooter, ModalHeader, ModalOverlay, Select, Stack, Tag, TagLabel, Text, Textarea, useToast,
+    ModalFooter, ModalHeader, ModalOverlay, Select, Stack, Text, Textarea, useToast,
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+const EMPTY_FORM = {
+    mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false,
+    leftoverFromDate: '', shared: false, minTemp: '', maxTemp: '', seasons: [],
+    recipeId: null, cookbookId: '',
+};
+
 function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSaved }) {
     const [localDateStr, setLocalDateStr] = useState(dateStr || '');
-    const [form, setForm] = useState({ mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false, minTemp: '', maxTemp: '', seasons: [], recipeId: null });
+    const [form, setForm] = useState(EMPTY_FORM);
     const [dupWarning, setDupWarning] = useState(null);
     const [recipes, setRecipes] = useState([]);
+    const [cookbooks, setCookbooks] = useState([]);
+    const [addingCookbook, setAddingCookbook] = useState(false);
+    const [newCookbookName, setNewCookbookName] = useState('');
+    const [savingCookbook, setSavingCookbook] = useState(false);
     const toast = useToast();
 
     useEffect(() => {
         if (!isOpen) return;
         setLocalDateStr(dateStr || '');
         setDupWarning(null);
+        setAddingCookbook(false);
+        setNewCookbookName('');
         setForm(mode === 'edit' && entry
-            ? { mealName: entry.mealName || '', recipeLink: entry.recipeLink || '', notes: entry.notes || '', confirmed: entry.confirmed ?? false, leftover: entry.leftover ?? false, leftoverFromDate: entry.leftoverFromDate || '', shared: entry.shared ?? false, minTemp: entry.minTemp ?? '', maxTemp: entry.maxTemp ?? '', seasons: entry.seasons || [], recipeId: entry.recipeId ?? null }
-            : { mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false, leftoverFromDate: '', shared: false, minTemp: '', maxTemp: '', seasons: [], recipeId: null }
+            ? {
+                mealName: entry.mealName || '',
+                recipeLink: entry.recipeLink || '',
+                notes: entry.notes || '',
+                confirmed: entry.confirmed ?? false,
+                leftover: entry.leftover ?? false,
+                leftoverFromDate: entry.leftoverFromDate || '',
+                shared: entry.shared ?? false,
+                minTemp: entry.minTemp ?? '',
+                maxTemp: entry.maxTemp ?? '',
+                seasons: entry.seasons || [],
+                recipeId: entry.recipeId ?? null,
+                cookbookId: entry.cookbookId != null ? String(entry.cookbookId) : '',
+            }
+            : EMPTY_FORM
         );
     }, [isOpen, entry, mode, dateStr]);
 
     useEffect(() => {
-        if (!isOpen || mode !== 'edit') return;
-        authFetch('/api/recipes')
-            .then(r => r.json())
-            .then(setRecipes)
-            .catch(console.error);
+        if (!isOpen) return;
+        authFetch('/api/cookbooks').then(r => r.json()).then(setCookbooks).catch(console.error);
+        if (mode === 'edit') {
+            authFetch('/api/recipes').then(r => r.json()).then(setRecipes).catch(console.error);
+        }
     }, [isOpen, mode]);
 
     const handleChange = (e) => {
         if (e.target.name === 'mealName') setDupWarning(null);
         setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+    };
+
+    const handleCreateCookbook = async () => {
+        if (!newCookbookName.trim()) return;
+        setSavingCookbook(true);
+        try {
+            const r = await authFetch('/api/cookbooks', {
+                method: 'POST',
+                body: JSON.stringify({ name: newCookbookName.trim() }),
+            });
+            if (!r.ok) {
+                const text = await r.text().catch(() => '');
+                let msg = text;
+                try { msg = JSON.parse(text).message || text; } catch { /* raw */ }
+                toast({ title: 'Could not create cookbook', description: msg, status: 'error', duration: 4000, isClosable: true });
+                return;
+            }
+            const saved = await r.json();
+            setCookbooks(prev => [...prev, saved].sort((a, b) => {
+                if (a.global !== b.global) return a.global ? 1 : -1;
+                return a.name.localeCompare(b.name);
+            }));
+            setForm(f => ({ ...f, cookbookId: String(saved.id) }));
+            setNewCookbookName('');
+            setAddingCookbook(false);
+        } catch {
+            toast({ title: 'Could not create cookbook', status: 'error', duration: 3000, isClosable: true });
+        } finally {
+            setSavingCookbook(false);
+        }
     };
 
     const effectiveDateStr = mode === 'add' ? localDateStr : dateStr;
@@ -66,28 +121,46 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
             const saved = await r.json();
             setDupWarning(null);
 
-            // Link/unlink recipe if changed
-            const originalRecipeId = entry?.recipeId ?? null;
-            const newRecipeId = form.recipeId;
-            if (mode === 'edit' && newRecipeId !== originalRecipeId && saved.mealId) {
-                try {
-                    const pr = await authFetch(`/api/meals/${saved.mealId}/recipe`, {
-                        method: 'PATCH',
-                        body: JSON.stringify({ recipeId: newRecipeId }),
-                    });
-                    if (pr.ok) {
-                        const linked = await pr.json();
-                        saved.recipeId = linked.recipeId || null;
-                        saved.recipeName = linked.recipeName || null;
-                        saved.cookbookName = linked.cookbookName || null;
-                    } else {
-                        const text = await pr.text().catch(() => '');
-                        let msg = text;
-                        try { msg = JSON.parse(text).message || text; } catch { /* raw */ }
-                        toast({ title: 'Could not link recipe', description: msg, status: 'warning', duration: 4000, isClosable: true });
+            if (saved.mealId) {
+                // Patch cookbook if changed
+                const originalCookbookId = mode === 'edit' ? (entry?.cookbookId != null ? String(entry.cookbookId) : '') : '';
+                if (form.cookbookId !== originalCookbookId) {
+                    try {
+                        const cookbookId = form.cookbookId !== '' ? Number(form.cookbookId) : null;
+                        const pr = await authFetch(`/api/meals/${saved.mealId}/cookbook`, {
+                            method: 'PATCH',
+                            body: JSON.stringify({ cookbookId }),
+                        });
+                        if (pr.ok) {
+                            const linked = await pr.json();
+                            saved.cookbookId = linked.cookbookId ?? null;
+                            saved.cookbookName = linked.cookbookName ?? null;
+                        }
+                    } catch { /* non-fatal */ }
+                }
+
+                // Patch recipe if changed (edit mode only)
+                const originalRecipeId = entry?.recipeId ?? null;
+                const newRecipeId = form.recipeId;
+                if (mode === 'edit' && newRecipeId !== originalRecipeId) {
+                    try {
+                        const pr = await authFetch(`/api/meals/${saved.mealId}/recipe`, {
+                            method: 'PATCH',
+                            body: JSON.stringify({ recipeId: newRecipeId }),
+                        });
+                        if (pr.ok) {
+                            const linked = await pr.json();
+                            saved.recipeId = linked.recipeId || null;
+                            saved.recipeName = linked.recipeName || null;
+                        } else {
+                            const text = await pr.text().catch(() => '');
+                            let msg = text;
+                            try { msg = JSON.parse(text).message || text; } catch { /* raw */ }
+                            toast({ title: 'Could not link recipe', description: msg, status: 'warning', duration: 4000, isClosable: true });
+                        }
+                    } catch {
+                        toast({ title: 'Could not link recipe', status: 'warning', duration: 3000, isClosable: true });
                     }
-                } catch {
-                    toast({ title: 'Could not link recipe', status: 'warning', duration: 3000, isClosable: true });
                 }
             }
 
@@ -100,7 +173,6 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         const nameChanged = !(mode === 'edit' && entry?.mealName === form.mealName.trim());
         if (nameChanged && form.mealName.trim()) {
             try {
@@ -110,7 +182,6 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
                 if (existsShared) { setDupWarning('shared'); return; }
             } catch { /* ignore, proceed */ }
         }
-
         await doSave();
     };
 
@@ -166,6 +237,51 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
                                     </HStack>
                                 </Alert>
                             )}
+
+                            <FormControl>
+                                <FormLabel fontSize="sm">Cookbook — optional</FormLabel>
+                                {addingCookbook ? (
+                                    <HStack>
+                                        <Input
+                                            size="sm"
+                                            placeholder="Cookbook name…"
+                                            value={newCookbookName}
+                                            onChange={e => setNewCookbookName(e.target.value)}
+                                            autoFocus
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') { e.preventDefault(); handleCreateCookbook(); }
+                                                if (e.key === 'Escape') setAddingCookbook(false);
+                                            }}
+                                        />
+                                        <Button size="sm" colorScheme="green" onClick={handleCreateCookbook} isLoading={savingCookbook} flexShrink={0}>
+                                            Create
+                                        </Button>
+                                        <Button size="sm" variant="ghost" onClick={() => setAddingCookbook(false)} flexShrink={0}>
+                                            Cancel
+                                        </Button>
+                                    </HStack>
+                                ) : (
+                                    <HStack>
+                                        <Select
+                                            name="cookbookId"
+                                            value={form.cookbookId}
+                                            onChange={handleChange}
+                                            size="sm"
+                                            placeholder="No cookbook"
+                                        >
+                                            {cookbooks.map(cb => (
+                                                <option key={cb.id} value={cb.id}>
+                                                    {cb.name}{cb.global ? ' ✦' : ''}
+                                                </option>
+                                            ))}
+                                        </Select>
+                                        <Button size="sm" variant="outline" onClick={() => setAddingCookbook(true)} flexShrink={0} title="Add new cookbook">
+                                            +
+                                        </Button>
+                                    </HStack>
+                                )}
+                                <FormHelperText fontSize="xs" mt={1}>✦ = global cookbook</FormHelperText>
+                            </FormControl>
 
                             {mode === 'edit' && (
                                 <FormControl>

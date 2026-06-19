@@ -109,6 +109,29 @@ public class MealController {
         return toResponse(meal);
     }
 
+    @PatchMapping("/{id}/cookbook")
+    public Map<String, Object> linkCookbook(@PathVariable Long id,
+                                             @RequestBody Map<String, Object> body,
+                                             @AuthenticationPrincipal AppUserDetails userDetails) {
+        Meal meal = mealRepository.findByIdForHousehold(id, userDetails.getHousehold().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Meal not found"));
+        Object rawId = body.get("cookbookId");
+        if (rawId == null) {
+            meal.setCookbook(null);
+        } else {
+            Long cookbookId = ((Number) rawId).longValue();
+            Cookbook cookbook = cookbookRepository.findById(cookbookId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cookbook not found"));
+            meal.setCookbook(cookbook);
+        }
+        mealRepository.save(meal);
+        Cookbook cb = meal.getCookbook();
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("cookbookId", cb != null ? cb.getId() : null);
+        result.put("cookbookName", cb != null ? cb.getName() : null);
+        return result;
+    }
+
     @PatchMapping("/{id}/recipe")
     public Map<String, Object> linkRecipe(@PathVariable Long id,
                                            @RequestBody Map<String, Object> body,
