@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import {
-    Box, Button, HStack, Input, Popover, PopoverBody, PopoverContent,
+    Box, Button, HStack, Input, Link, Popover, PopoverBody, PopoverContent,
     PopoverTrigger, Text, Tooltip, VStack,
 } from '@chakra-ui/react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
@@ -156,6 +156,11 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealL
                     <Text fontSize="xs" color="gray.400" lineHeight="1.2" mt="1px">
                         {entry.cookbookName}
                     </Text>
+                )}
+                {entry?.recipeLink && !entry?.cookbookName && (
+                    <Link href={entry.recipeLink} isExternal fontSize="xs" color="blue.400" lineHeight="1.2" mt="1px" display="block">
+                        Recipe ↗
+                    </Link>
                 )}
                 {(() => {
                     const warn = getMealWarning(entry?.mealName, mealLibrary, weather, dateStr);
