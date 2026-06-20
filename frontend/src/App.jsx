@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-    Box, Button, Heading, HStack, Tab, TabList, TabPanel, TabPanels, Tabs, Text,
+    Box, Button, Heading, HStack, Input, Tab, TabList, TabPanel, TabPanels, Tabs, Text,
 } from '@chakra-ui/react';
 import WeekPlanner from './components/WeekPlanner';
 import History from './components/History';
