@@ -130,10 +130,31 @@ function App() {
                 </TabList>
                 <TabPanels>
                     <TabPanel p={0}>
-                        <HStack justify="space-between" mb={4}>
+                        <HStack justify="space-between" mb={2}>
                             <Button onClick={() => shiftWeek(-7)} size="sm" variant="outline">← Prev</Button>
                             <Text fontWeight="semibold" fontSize="sm">{weekLabel}</Text>
                             <Button onClick={() => shiftWeek(7)} size="sm" variant="outline">Next →</Button>
+                        </HStack>
+                        <HStack justify="flex-end" mb={4} spacing={2}>
+                            <Button
+                                size="xs"
+                                variant="ghost"
+                                colorScheme="blue"
+                                isDisabled={weekStart.toDateString() === getSundayOfWeek(new Date()).toDateString()}
+                                onClick={() => setWeekStart(getSundayOfWeek(new Date()))}
+                            >
+                                Today
+                            </Button>
+                            <Input
+                                type="date"
+                                size="xs"
+                                w="150px"
+                                title="Jump to week containing this date"
+                                onChange={e => {
+                                    if (e.target.value)
+                                        setWeekStart(getSundayOfWeek(new Date(e.target.value + 'T00:00:00')));
+                                }}
+                            />
                         </HStack>
                         <WeekPlanner
                             weekStart={weekStart}
