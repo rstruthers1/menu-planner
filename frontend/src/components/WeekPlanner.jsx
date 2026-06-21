@@ -14,6 +14,14 @@ import { authFetch } from '../utils/api';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+function getSeason(dateStr) {
+    const m = new Date(dateStr + 'T00:00:00').getMonth() + 1;
+    if (m >= 3 && m <= 5) return 'SPRING';
+    if (m >= 6 && m <= 8) return 'SUMMER';
+    if (m >= 9 && m <= 11) return 'FALL';
+    return 'WINTER';
+}
+
 function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, setMealLibrary, toDateStr }) {
     const mealSuggestions = [...new Set(mealLibrary.map(m => m.name))].sort();
     const [detailDay, setDetailDay] = useState(null);
@@ -145,12 +153,13 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
             const meal = entry?.mealName || '—';
             const leftoverNote = entry?.leftover ? ' <span style="color:#999;font-size:11px">(leftovers)</span>' : '';
             const confirmed = entry && !entry.confirmed ? ' <span style="color:#aaa;font-size:11px">idea</span>' : '';
+            const cookbookNote = entry?.cookbookName ? `<br><span style="color:#888;font-size:11px">${entry.cookbookName}</span>` : '';
             const weatherStr = w
                 ? `${icon(w.condition)} ${w.condition || ''} ${w.high !== undefined ? `${w.high}°/${w.low}°` : ''}`.trim()
                 : '—';
             return `<tr>
                 <td><strong>${dayName}</strong><br><span style="color:#888;font-size:11px">${dateLabel}</span></td>
-                <td>${meal}${leftoverNote}${confirmed}</td>
+                <td>${meal}${leftoverNote}${confirmed}${cookbookNote}</td>
                 <td style="white-space:nowrap">${weatherStr}</td>
             </tr>`;
         }).join('');
@@ -323,21 +332,28 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
                 </AlertDialogContent>
             </AlertDialogOverlay>
         </AlertDialog>
-        {aiChatDay && (
-            <AiChatModal
-                isOpen={!!aiChatDay}
-                onClose={() => setAiChatDay(null)}
-                dateStr={aiChatDay.dateStr}
-                dayName={aiChatDay.dayName}
-                weather={aiChatDay.weather}
-                existingMeals={aiChatDay.existingMeals}
-                mealLibrary={mealSuggestions}
-                weekStart={toDateStr(weekStart)}
-                onSelect={(mealName) => {
-                    handleSave(aiChatDay.dateStr, aiChatDay.dayName, mealName);
-                }}
-            />
-        )}
+        {aiChatDay && (() => {
+            const season = getSeason(aiChatDay.dateStr);
+            const seasonMeals = mealLibrary
+                .filter(m => !m.seasons || m.seasons.length === 0 || m.seasons.includes(season))
+                .map(m => m.name)
+                .sort();
+            return (
+                <AiChatModal
+                    isOpen={!!aiChatDay}
+                    onClose={() => setAiChatDay(null)}
+                    dateStr={aiChatDay.dateStr}
+                    dayName={aiChatDay.dayName}
+                    weather={aiChatDay.weather}
+                    existingMeals={aiChatDay.existingMeals}
+                    mealLibrary={seasonMeals}
+                    weekStart={toDateStr(weekStart)}
+                    onSelect={(mealName) => {
+                        handleSave(aiChatDay.dateStr, aiChatDay.dayName, mealName);
+                    }}
+                />
+            );
+        })()}
         {detailDay && (
             <MealDetailModal
                 isOpen={!!detailDay}

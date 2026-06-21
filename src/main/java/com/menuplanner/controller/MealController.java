@@ -109,6 +109,22 @@ public class MealController {
         return toResponse(meal);
     }
 
+    @PatchMapping("/{id}/seasons")
+    public Map<String, Object> updateSeasons(@PathVariable Long id,
+                                              @RequestBody Map<String, Object> body,
+                                              @AuthenticationPrincipal AppUserDetails userDetails) {
+        Meal meal = mealRepository.findByIdForHousehold(id, userDetails.getHousehold().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Meal not found"));
+        @SuppressWarnings("unchecked")
+        List<String> seasons = (List<String>) body.get("seasons");
+        meal.setSeasons(seasons == null || seasons.isEmpty() ? null
+                : seasons.stream().filter(s -> s != null && !s.isBlank()).collect(Collectors.joining(",")));
+        mealRepository.save(meal);
+        return Map.of("id", meal.getId(), "seasons", meal.getSeasons() != null
+                ? Arrays.stream(meal.getSeasons().split(",")).filter(s -> !s.isBlank()).collect(Collectors.toList())
+                : List.of());
+    }
+
     @PatchMapping("/{id}/cookbook")
     public Map<String, Object> linkCookbook(@PathVariable Long id,
                                              @RequestBody Map<String, Object> body,

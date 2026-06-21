@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-    Badge, Box, Button, HStack, Input, Link, Modal, ModalBody, ModalCloseButton,
+    Badge, Box, Button, Checkbox, HStack, Input, Link, Modal, ModalBody, ModalCloseButton,
     ModalContent, ModalHeader, ModalOverlay, Tag, TagLabel, Text, useDisclosure,
     useToast, VStack,
 } from '@chakra-ui/react';
@@ -8,7 +8,8 @@ import {
 import AddMealModal from './AddMealModal';
 import { authFetch } from '../utils/api';
 
-const SEASON_LABELS = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall', WINTER: 'Winter' };
+const SEASONS = ['SPRING', 'SUMMER', 'FALL', 'WINTER'];
+const SEASON_SHORT = { SPRING: 'Spr', SUMMER: 'Sum', FALL: 'Fall', WINTER: 'Win' };
 const SEASON_COLORS = { SPRING: 'green', SUMMER: 'orange', FALL: 'yellow', WINTER: 'blue' };
 const PAGE_SIZE = 15;
 
@@ -17,6 +18,55 @@ function tempLabel(minTemp, maxTemp) {
     if (minTemp != null) return `min ${minTemp}°F`;
     if (maxTemp != null) return `max ${maxTemp}°F`;
     return null;
+}
+
+function SeasonChips({ meal, onUpdate }) {
+    const [saving, setSaving] = useState(false);
+    const toast = useToast();
+
+    const toggle = async (season) => {
+        if (saving) return;
+        const current = Array.isArray(meal.seasons) ? meal.seasons : [];
+        const next = current.includes(season)
+            ? current.filter(s => s !== season)
+            : [...current, season];
+        setSaving(true);
+        try {
+            await authFetch(`/api/meals/${meal.id}/seasons`, {
+                method: 'PATCH',
+                body: JSON.stringify({ seasons: next }),
+            });
+            onUpdate(meal.id, next);
+        } catch {
+            toast({ title: 'Could not update seasons', status: 'error', duration: 3000, isClosable: true });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const active = Array.isArray(meal.seasons) ? meal.seasons : [];
+
+    return (
+        <HStack spacing={1} mt="4px" opacity={saving ? 0.5 : 1} title="Click to toggle season suitability">
+            {SEASONS.map(s => (
+                <Badge
+                    key={s}
+                    fontSize="9px"
+                    px="5px"
+                    py="1px"
+                    cursor={saving ? 'not-allowed' : 'pointer'}
+                    colorScheme={active.includes(s) ? SEASON_COLORS[s] : 'gray'}
+                    variant={active.includes(s) ? 'subtle' : 'outline'}
+                    onClick={() => toggle(s)}
+                    userSelect="none"
+                    _hover={{ opacity: 0.75 }}
+                    transition="opacity 0.1s"
+                >
+                    {SEASON_SHORT[s]}
+                </Badge>
+            ))}
+        </HStack>
+    );
 }
 
 function RecipeModal({ recipe, isOpen, onClose }) {
@@ -56,6 +106,8 @@ function RecipeModal({ recipe, isOpen, onClose }) {
 function MealLibrary() {
     const [meals, setMeals] = useState([]);
     const [search, setSearch] = useState('');
+    const [filterNoSeason, setFilterNoSeason] = useState(false);
+    const [pinnedNoSeasonIds, setPinnedNoSeasonIds] = useState(null);
     const [page, setPage] = useState(0);
     const [editMeal, setEditMeal] = useState(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
@@ -70,9 +122,18 @@ function MealLibrary() {
             .catch(console.error);
     }, []);
 
-    const filtered = meals.filter(m =>
-        m.name.toLowerCase().includes(search.toLowerCase())
-    );
+    const handleSeasonUpdate = (mealId, newSeasons) => {
+        setMeals(prev => prev.map(m => m.id === mealId ? { ...m, seasons: newSeasons } : m));
+    };
+
+    const filtered = meals.filter(m => {
+        if (search && !m.name.toLowerCase().includes(search.toLowerCase())) return false;
+        if (filterNoSeason) {
+            // Keep pinned meals visible even after they gain a season
+            if (pinnedNoSeasonIds ? !pinnedNoSeasonIds.has(m.id) : (Array.isArray(m.seasons) && m.seasons.length > 0)) return false;
+        }
+        return true;
+    });
     const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
     const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
@@ -119,11 +180,12 @@ function MealLibrary() {
     };
 
     const hasTempConstraint = m => m.minTemp != null || m.maxTemp != null;
-    const hasSeasons = m => Array.isArray(m.seasons) && m.seasons.length > 0;
+
+    const noSeasonCount = meals.filter(m => !Array.isArray(m.seasons) || m.seasons.length === 0).length;
 
     return (
         <Box>
-            <HStack mb={4}>
+            <HStack mb={3}>
                 <Input
                     placeholder="Search meal library…"
                     size="sm"
@@ -134,10 +196,34 @@ function MealLibrary() {
                     + Add meal
                 </Button>
             </HStack>
+            <HStack mb={4} spacing={3}>
+                <Checkbox
+                    size="sm"
+                    isChecked={filterNoSeason}
+                    onChange={e => {
+                        const on = e.target.checked;
+                        setFilterNoSeason(on);
+                        setPage(0);
+                        if (on) {
+                            setPinnedNoSeasonIds(new Set(
+                                meals.filter(m => !Array.isArray(m.seasons) || m.seasons.length === 0).map(m => m.id)
+                            ));
+                        } else {
+                            setPinnedNoSeasonIds(null);
+                        }
+                    }}
+                    colorScheme="orange"
+                >
+                    <Text fontSize="sm">No season set{noSeasonCount > 0 ? ` (${noSeasonCount})` : ''}</Text>
+                </Checkbox>
+                {filterNoSeason && (
+                    <Text fontSize="xs" color="gray.400">Click the season chips below each meal to tag it</Text>
+                )}
+            </HStack>
 
             {filtered.length === 0 && (
                 <Text fontSize="sm" color="gray.400" textAlign="center" py={8}>
-                    {search ? 'No meals match your search.' : 'No meals in library yet.'}
+                    {search || filterNoSeason ? 'No meals match your filter.' : 'No meals in library yet.'}
                 </Text>
             )}
 
@@ -171,19 +257,14 @@ function MealLibrary() {
                                     {meal.shared && <Badge colorScheme="blue" fontSize="10px">shared</Badge>}
                                 </HStack>
 
-                                {(hasSeasons(meal) || hasTempConstraint(meal)) && (
-                                    <HStack spacing={2} mt="4px" flexWrap="wrap">
-                                        {hasSeasons(meal) && meal.seasons.map(s => (
-                                            <Badge key={s} colorScheme={SEASON_COLORS[s]} fontSize="10px" variant="subtle">
-                                                {SEASON_LABELS[s]}
-                                            </Badge>
-                                        ))}
-                                        {hasTempConstraint(meal) && (
-                                            <Badge colorScheme="gray" fontSize="10px" variant="outline">
-                                                🌡 {tempLabel(meal.minTemp, meal.maxTemp)}
-                                            </Badge>
-                                        )}
-                                    </HStack>
+                                <SeasonChips meal={meal} onUpdate={handleSeasonUpdate} />
+
+                                {hasTempConstraint(meal) && (
+                                    <Box mt="4px">
+                                        <Badge colorScheme="gray" fontSize="10px" variant="outline">
+                                            🌡 {tempLabel(meal.minTemp, meal.maxTemp)}
+                                        </Badge>
+                                    </Box>
                                 )}
 
                                 {meal.sides && meal.sides.length > 0 && (
