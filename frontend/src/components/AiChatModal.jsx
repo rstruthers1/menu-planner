@@ -8,7 +8,7 @@ import { authFetch } from '../utils/api';
 const INIT_PROMPT = 'Suggest some meal options for me.';
 const REEL_COUNT = 3;
 
-function SlotReel({ items, finalValue, stopped, stopDelay }) {
+function SlotReel({ items, finalValue, stopped, stopDelay, onPick }) {
     const [current, setCurrent] = useState(items.length > 0 ? items[Math.floor(Math.random() * items.length)] : '–');
     const [settled, setSettled] = useState(false);
     const intervalRef = useRef(null);
@@ -45,6 +45,9 @@ function SlotReel({ items, finalValue, stopped, stopDelay }) {
             transition="border-color 0.35s, background 0.35s"
             px={2}
             boxShadow={settled ? 'sm' : 'none'}
+            cursor={settled ? 'pointer' : 'default'}
+            _hover={settled ? { bg: 'purple.100', borderColor: 'purple.500' } : {}}
+            onClick={settled ? () => onPick(current) : undefined}
         >
             <Text
                 fontSize="xs"
@@ -75,9 +78,9 @@ function SlotMachine({ spinning, suggestions, mealLibrary, onSelect, onClose }) 
     return (
         <Box>
             <Text fontSize="xs" color="gray.400" textAlign="center" mb={2}>
-                {spinning ? 'Spinning…' : allSettled ? 'Pick one 👇' : ''}
+                {spinning ? 'Spinning…' : allSettled ? 'Tap a tile to pick' : ''}
             </Text>
-            <HStack spacing={2} mb={allSettled && suggestions.length > 0 ? 3 : 0}>
+            <HStack spacing={2}>
                 {Array.from({ length: REEL_COUNT }, (_, i) => (
                     <SlotReel
                         key={i}
@@ -85,35 +88,10 @@ function SlotMachine({ spinning, suggestions, mealLibrary, onSelect, onClose }) 
                         finalValue={suggestions[i]?.name || ''}
                         stopped={!spinning}
                         stopDelay={300 + i * 500}
+                        onPick={(name) => { onSelect(name); onClose(); }}
                     />
                 ))}
             </HStack>
-
-            {allSettled && suggestions.length > 0 && (
-                <VStack spacing={2} align="stretch">
-                    {suggestions.map((s, idx) => (
-                        <Box
-                            key={idx}
-                            borderWidth="1px"
-                            borderRadius="md"
-                            px={3}
-                            py={2}
-                            cursor="pointer"
-                            transition="all 0.1s"
-                            _hover={{ bg: 'purple.50', borderColor: 'purple.200', shadow: 'sm' }}
-                            onClick={() => { onSelect(s.name); onClose(); }}
-                        >
-                            <HStack justify="space-between" align="flex-start">
-                                <Text fontSize="sm" fontWeight="semibold" lineHeight="1.3">{s.name}</Text>
-                                <Text fontSize="xs" color="purple.400" fontWeight="medium" flexShrink={0} mt="1px">Select →</Text>
-                            </HStack>
-                            {s.reason && (
-                                <Text fontSize="xs" color="gray.500" mt={1} lineHeight="1.4">{s.reason}</Text>
-                            )}
-                        </Box>
-                    ))}
-                </VStack>
-            )}
         </Box>
     );
 }
@@ -314,7 +292,7 @@ function AiChatModal({ isOpen, onClose, dateStr, dayName, weather, existingMeals
                         </Button>
                     </HStack>
                     <Button size="sm" variant="outline" colorScheme="purple" onClick={spinWheel} isDisabled={loading} w="full">
-                        🎰 Spin the wheel
+                        🎰 Surprise me!
                     </Button>
                 </ModalBody>
             </ModalContent>

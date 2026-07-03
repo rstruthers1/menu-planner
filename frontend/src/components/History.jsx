@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
     Box, Button, HStack, Input, Link, Table, Tbody, Td, Text, Th, Thead, Tooltip, Tr,
 } from '@chakra-ui/react';
-import { authFetch } from '../utils/api';
+import { authFetch, recipeDomain } from '../utils/api';
 
 function weatherIcon(condition) {
     if (!condition) return '';
@@ -121,7 +121,7 @@ function History() {
                                             </Td>
                                             <Td>
                                                 {e.recipeLink
-                                                    ? <Link href={e.recipeLink} isExternal color="blue.400" fontSize="sm">Link</Link>
+                                                    ? <Link href={e.recipeLink} isExternal color="blue.400" fontSize="sm">{recipeDomain(e.recipeLink) ?? 'Recipe'} ↗</Link>
                                                     : null}
                                             </Td>
                                             <Td fontSize="sm" color="gray.600" maxW="200px">

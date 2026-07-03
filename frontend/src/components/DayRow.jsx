@@ -4,6 +4,7 @@ import {
     PopoverTrigger, Text, Tooltip, VStack,
 } from '@chakra-ui/react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { recipeDomain } from '../utils/api';
 
 function weatherIcon(condition) {
     if (!condition) return '';
@@ -61,6 +62,7 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealL
     const [pickerOpen, setPickerOpen] = useState(false);
     const [search, setSearch] = useState('');
     const searchRef = useRef(null);
+    const confirmedRef = useRef(false);
     const listId = `suggestions-${dateStr}`;
     const isToday = dateStr === toLocalDateStr();
     const { setNodeRef: setDropRef, isOver } = useDroppable({ id: dateStr });
@@ -81,10 +83,34 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealL
         }
     }, [pickerOpen]);
 
-    const handleBlur = () => onSave(dateStr, dayName, mealName);
-    const handleKeyDown = (e) => { if (e.key === 'Enter') e.target.blur(); };
+    const handleBlur = () => {
+        if (confirmedRef.current) {
+            confirmedRef.current = false;
+            return;
+        }
+        const val = mealName.trim();
+        const saved = entry?.mealName || '';
+        if (val === '' || val === saved || mealSuggestions.includes(val)) {
+            onSave(dateStr, dayName, mealName);
+        } else {
+            setMealName(saved);
+        }
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            confirmedRef.current = true;
+            onSave(dateStr, dayName, mealName);
+            e.target.blur();
+        }
+        if (e.key === 'Escape') {
+            setMealName(entry?.mealName || '');
+            e.target.blur();
+        }
+    };
 
     const pickMeal = (name) => {
+        confirmedRef.current = true;
         setMealName(name);
         setPickerOpen(false);
         onSave(dateStr, dayName, name);
@@ -159,7 +185,7 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealL
                 )}
                 {entry?.recipeLink && !entry?.cookbookName && (
                     <Link href={entry.recipeLink} isExternal fontSize="xs" color="blue.400" lineHeight="1.2" mt="1px" display="block">
-                        Recipe ↗
+                        {recipeDomain(entry.recipeLink) ?? 'Recipe'} ↗
                     </Link>
                 )}
                 {(() => {

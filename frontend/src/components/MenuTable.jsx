@@ -7,6 +7,7 @@ import {
     Th,
     Td
 } from '@chakra-ui/react';
+import { recipeDomain } from '../utils/api';
 
 function MenuTable({ menus }) {
   return (
@@ -34,7 +35,7 @@ function MenuTable({ menus }) {
             <Td>{entry.lowTempF ?? "—"}</Td>
             <Td>
               {entry.recipeLink ? (
-                <Link href={entry.recipeLink} color="blue.500" isExternal>Link</Link>
+                <Link href={entry.recipeLink} color="blue.500" isExternal>{recipeDomain(entry.recipeLink) ?? 'Recipe'} ↗</Link>
               ) : "—"}
             </Td>
             <Td>{entry.notes}</Td>

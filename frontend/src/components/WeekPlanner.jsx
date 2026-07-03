@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     AlertDialog, AlertDialogBody, AlertDialogContent, AlertDialogFooter,
     AlertDialogHeader, AlertDialogOverlay, Button, HStack, Tag, TagLabel, Text, useDisclosure,
@@ -26,11 +26,17 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
     const mealSuggestions = [...new Set(mealLibrary.map(m => m.name))].sort();
     const [detailDay, setDetailDay] = useState(null);
     const [aiChatDay, setAiChatDay] = useState(null);
-    const [candidates, setCandidates] = useState([]);
+    const [candidates, setCandidates] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('candidateMeals') || '[]'); } catch { return []; }
+    });
     const [activeId, setActiveId] = useState(null);
     const { isOpen: isAlertOpen, onOpen: onAlertOpen, onClose: onAlertClose } = useDisclosure();
     const { isOpen: isAddMealOpen, onOpen: onAddMealOpen, onClose: onAddMealClose } = useDisclosure();
     const cancelRef = useRef();
+
+    useEffect(() => {
+        localStorage.setItem('candidateMeals', JSON.stringify(candidates));
+    }, [candidates]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } })

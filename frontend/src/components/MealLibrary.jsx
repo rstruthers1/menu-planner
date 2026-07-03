@@ -6,7 +6,7 @@ import {
 } from '@chakra-ui/react';
 
 import AddMealModal from './AddMealModal';
-import { authFetch } from '../utils/api';
+import { authFetch, recipeDomain } from '../utils/api';
 
 const SEASONS = ['SPRING', 'SUMMER', 'FALL', 'WINTER'];
 const SEASON_SHORT = { SPRING: 'Spr', SUMMER: 'Sum', FALL: 'Fall', WINTER: 'Win' };
@@ -241,16 +241,21 @@ function MealLibrary() {
                             <Box flex={1} minW={0}>
                                 <HStack spacing={2} align="center" flexWrap="wrap">
                                     {meal.recipeLink ? (
-                                        <Link
-                                            href={meal.recipeLink}
-                                            isExternal
-                                            fontWeight="semibold"
-                                            fontSize="sm"
-                                            color="blue.600"
-                                            _hover={{ textDecoration: 'underline' }}
-                                        >
-                                            {meal.name} ↗
-                                        </Link>
+                                        <Box>
+                                            <Link
+                                                href={meal.recipeLink}
+                                                isExternal
+                                                fontWeight="semibold"
+                                                fontSize="sm"
+                                                color="blue.600"
+                                                _hover={{ textDecoration: 'underline' }}
+                                            >
+                                                {meal.name} ↗
+                                            </Link>
+                                            {recipeDomain(meal.recipeLink) && (
+                                                <Text fontSize="xs" color="gray.400" lineHeight="1.2">{recipeDomain(meal.recipeLink)}</Text>
+                                            )}
+                                        </Box>
                                     ) : (
                                         <Text fontWeight="semibold" fontSize="sm">{meal.name}</Text>
                                     )}
