@@ -10,6 +10,12 @@
   Fix: only save on explicit confirm (Enter or selecting a suggestion), not on blur.
 
 - [x] **Recipe link should show domain name**
+
+- [ ] **Import recipe from URL**
+  Parse Schema.org JSON-LD from recipe websites to auto-fill name, ingredients, instructions, and servings.
+  Backend: `GET /api/recipes/scrape?url=...` using Jsoup to fetch + extract `<script type="application/ld+json">` with `@type: Recipe`.
+  Frontend: URL input + "Import" button in RecipeDialog that pre-fills the form.
+  Note: won't work on sites requiring login (NYT Cooking) or with aggressive bot detection.
   Display the hostname (e.g. "allrecipes.com") instead of a generic label, so users know the source at a glance.
   Use `new URL(recipeLink).hostname` stripped of "www." wherever recipe links appear.
 

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import {
-    Badge, Box, Button, Divider, HStack, Input, Modal, ModalBody, ModalCloseButton,
+    Badge, Box, Button, Divider, HStack, Input, Link, Modal, ModalBody, ModalCloseButton,
     ModalContent, ModalFooter, ModalHeader, ModalOverlay, Select, Tag, TagLabel, Text,
     useDisclosure, useToast, VStack,
 } from '@chakra-ui/react';
-import { authFetch } from '../utils/api';
+import { authFetch, recipeDomain } from '../utils/api';
 import RecipeDialog from './RecipeDialog';
 import CookbookManager from './CookbookManager';
 
@@ -22,12 +22,17 @@ function ScaleModal({ recipe, isOpen, onClose }) {
             <ModalOverlay />
             <ModalContent>
                 <ModalHeader fontSize="md">
-                    {recipe.name}
-                    {recipe.mealName && (
-                        <Text as="span" fontSize="xs" fontWeight="normal" color="gray.400" ml={2}>
-                            — {recipe.mealName}
-                        </Text>
-                    )}
+                    <HStack spacing={3} align="baseline" flexWrap="wrap">
+                        <Text>{recipe.name}</Text>
+                        {recipe.mealName && (
+                            <Text fontSize="xs" fontWeight="normal" color="gray.400">— {recipe.mealName}</Text>
+                        )}
+                        {recipe.sourceUrl && (
+                            <Link href={recipe.sourceUrl} isExternal fontSize="xs" fontWeight="normal" color="blue.400">
+                                {recipeDomain(recipe.sourceUrl) ?? 'Source'} ↗
+                            </Link>
+                        )}
+                    </HStack>
                 </ModalHeader>
                 <ModalCloseButton />
                 <ModalBody pb={6}>
@@ -250,6 +255,11 @@ function RecipeList({ mealLibrary }) {
                                         <Tag size="sm" variant="subtle" colorScheme="orange" fontSize="10px">
                                             <TagLabel>{recipe.cookbookName}</TagLabel>
                                         </Tag>
+                                    )}
+                                    {recipe.sourceUrl && (
+                                        <Link href={recipe.sourceUrl} isExternal fontSize="xs" color="blue.400">
+                                            {recipeDomain(recipe.sourceUrl) ?? 'Source'} ↗
+                                        </Link>
                                     )}
                                 </HStack>
 

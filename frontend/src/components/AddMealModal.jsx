@@ -7,20 +7,20 @@ import {
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 import TagInput from './TagInput';
-import IngredientRows from './IngredientRows';
 
 const EMPTY_FORM = {
     name: '', recipeLink: '', notes: '', shared: false,
     minTemp: '', maxTemp: '', seasons: [],
-    recipe: { name: '', instructions: '', ingredients: [] },
     sides: [],
     cookbookId: '',
+    linkedRecipeId: '',
 };
 
 function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
     const isEdit = !!editMeal;
     const [form, setForm] = useState(EMPTY_FORM);
     const [cookbooks, setCookbooks] = useState([]);
+    const [recipes, setRecipes] = useState([]);
     const [dupWarning, setDupWarning] = useState(null);
     const [loading, setLoading] = useState(false);
     const toast = useToast();
@@ -37,11 +37,9 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
                 minTemp: editMeal.minTemp ?? '',
                 maxTemp: editMeal.maxTemp ?? '',
                 seasons: editMeal.seasons || [],
-                recipe: editMeal.recipe
-                    ? { name: editMeal.recipe.name || '', instructions: editMeal.recipe.instructions || '', ingredients: editMeal.recipe.ingredients || [] }
-                    : { name: '', instructions: '', ingredients: [] },
                 sides: editMeal.sides || [],
                 cookbookId: editMeal.cookbookId != null ? String(editMeal.cookbookId) : '',
+                linkedRecipeId: editMeal.recipe?.id != null ? String(editMeal.recipe.id) : '',
             });
         } else {
             setForm(EMPTY_FORM);
@@ -50,10 +48,8 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
 
     useEffect(() => {
         if (!isOpen) return;
-        authFetch('/api/cookbooks')
-            .then(r => r.json())
-            .then(setCookbooks)
-            .catch(console.error);
+        authFetch('/api/cookbooks').then(r => r.json()).then(setCookbooks).catch(console.error);
+        authFetch('/api/recipes').then(r => r.json()).then(setRecipes).catch(console.error);
     }, [isOpen]);
 
     const handleChange = (e) => {
@@ -66,9 +62,6 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
         try {
             const url = isEdit ? `/api/meals/${editMeal.id}` : '/api/meals';
             const method = isEdit ? 'PUT' : 'POST';
-            const recipePayload = form.recipe.name.trim()
-                ? { name: form.recipe.name.trim(), instructions: form.recipe.instructions || null, ingredients: form.recipe.ingredients }
-                : null;
             const r = await authFetch(url, {
                 method,
                 body: JSON.stringify({
@@ -79,12 +72,35 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
                     minTemp: form.minTemp !== '' ? Number(form.minTemp) : null,
                     maxTemp: form.maxTemp !== '' ? Number(form.maxTemp) : null,
                     seasons: form.seasons,
-                    recipe: recipePayload,
                     sides: form.sides,
                     cookbookId: form.cookbookId !== '' ? Number(form.cookbookId) : null,
                 }),
             });
             const saved = await r.json();
+
+            const originalLinkedRecipeId = isEdit && editMeal.recipe?.id != null ? String(editMeal.recipe.id) : '';
+            if (form.linkedRecipeId !== originalLinkedRecipeId) {
+                try {
+                    const recipeId = form.linkedRecipeId ? Number(form.linkedRecipeId) : null;
+                    const pr = await authFetch(`/api/meals/${saved.id}/recipe`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({ recipeId }),
+                    });
+                    if (pr.ok) {
+                        const linked = await pr.json();
+                        saved.recipeId = linked.recipeId || null;
+                        saved.recipeName = linked.recipeName || null;
+                    } else {
+                        const text = await pr.text().catch(() => '');
+                        let msg = text;
+                        try { msg = JSON.parse(text).message || text; } catch { /* raw */ }
+                        toast({ title: 'Could not link recipe', description: msg, status: 'warning', duration: 4000, isClosable: true });
+                    }
+                } catch {
+                    toast({ title: 'Could not link recipe', status: 'warning', duration: 3000, isClosable: true });
+                }
+            }
+
             setDupWarning(null);
             onAdded(saved);
             onClose();
@@ -160,6 +176,22 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
                             )}
 
                             <FormControl>
+                                <FormLabel fontSize="sm">Linked recipe — optional</FormLabel>
+                                <Select
+                                    size="sm"
+                                    value={form.linkedRecipeId}
+                                    onChange={e => setForm(f => ({ ...f, linkedRecipeId: e.target.value }))}
+                                    placeholder="No recipe linked"
+                                >
+                                    {recipes.map(rec => (
+                                        <option key={rec.id} value={rec.id}>
+                                            {rec.name}{rec.cookbookName ? ` — ${rec.cookbookName}` : ''}
+                                        </option>
+                                    ))}
+                                </Select>
+                            </FormControl>
+
+                            <FormControl>
                                 <FormLabel>Recipe Link</FormLabel>
                                 <Input name="recipeLink" value={form.recipeLink} onChange={handleChange} placeholder="https://…" />
                             </FormControl>
@@ -178,42 +210,6 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
                                     placeholder="Type a side and press Enter…"
                                     suggestionsUrl="/api/meals/side-suggestions"
                                 />
-                            </Box>
-
-                            <Divider />
-
-                            <Box>
-                                <Text fontWeight="semibold" fontSize="sm" mb={3}>Recipe <Text as="span" fontSize="xs" color="gray.400" fontWeight="normal">— optional</Text></Text>
-                                <Stack spacing={3}>
-                                    <FormControl>
-                                        <FormLabel fontSize="sm">Recipe Name</FormLabel>
-                                        <Input
-                                            size="sm"
-                                            placeholder="e.g. Mom's Pasta Sauce"
-                                            value={form.recipe.name}
-                                            onChange={e => setForm(f => ({ ...f, recipe: { ...f.recipe, name: e.target.value } }))}
-                                        />
-                                    </FormControl>
-                                    <FormControl>
-                                        <FormLabel fontSize="sm">Instructions</FormLabel>
-                                        <Textarea
-                                            size="sm"
-                                            placeholder="Step-by-step instructions…"
-                                            value={form.recipe.instructions}
-                                            onChange={e => setForm(f => ({ ...f, recipe: { ...f.recipe, instructions: e.target.value } }))}
-                                            rows={4}
-                                            resize="vertical"
-                                        />
-                                    </FormControl>
-                                    <FormControl>
-                                        <FormLabel fontSize="sm">Ingredients</FormLabel>
-                                        <IngredientRows
-                                            value={form.recipe.ingredients}
-                                            onChange={ings => setForm(f => ({ ...f, recipe: { ...f.recipe, ingredients: ings } }))}
-                                            suggestionsUrl="/api/ingredients"
-                                        />
-                                    </FormControl>
-                                </Stack>
                             </Box>
 
                             <Divider />

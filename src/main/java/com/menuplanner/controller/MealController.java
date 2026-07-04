@@ -248,12 +248,14 @@ public class MealController {
             recipe.setIngredients(ingredients);
             Recipe saved = recipeRepository.save(recipe);
             meal.setRecipe(saved);
-        } else {
+        } else if (recipeReq != null) {
+            // explicit empty recipe object = clear the inline recipe
             recipeRepository.findByMeal(meal).ifPresent(r -> {
                 meal.setRecipe(null);
                 recipeRepository.delete(r);
             });
         }
+        // null = not provided, leave existing recipe untouched
 
         List<Side> sides = new ArrayList<>();
         if (req.sides() != null) {
@@ -291,6 +293,7 @@ public class MealController {
             Map<String, Object> recipeMap = new LinkedHashMap<>();
             recipeMap.put("id", recipe.getId());
             recipeMap.put("name", recipe.getName());
+            recipeMap.put("sourceUrl", recipe.getSourceUrl());
             recipeMap.put("instructions", recipe.getInstructions());
             recipeMap.put("ingredients", recipe.getIngredients().stream()
                     .map(Ingredient::getName).collect(Collectors.toList()));

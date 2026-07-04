@@ -111,6 +111,7 @@ public class MenuEntryController {
         Recipe recipe = meal != null ? meal.getRecipe() : null;
         m.put("recipeId", recipe != null ? recipe.getId() : null);
         m.put("recipeName", recipe != null ? recipe.getName() : null);
+        m.put("recipeSourceUrl", recipe != null ? recipe.getSourceUrl() : null);
         Cookbook mealCookbook = meal != null ? meal.getCookbook() : null;
         Cookbook recipeCookbook = recipe != null ? recipe.getCookbook() : null;
         Cookbook displayCookbook = mealCookbook != null ? mealCookbook : recipeCookbook;

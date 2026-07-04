@@ -64,6 +64,7 @@ public class RecipeController {
         recipe.setName(req.name().trim());
         recipe.setServings(req.servings());
         recipe.setInstructions(req.instructions());
+        recipe.setSourceUrl(req.sourceUrl() != null && !req.sourceUrl().isBlank() ? req.sourceUrl().trim() : null);
 
         List<Ingredient> ingredients = new ArrayList<>();
         if (req.ingredients() != null) {
@@ -110,6 +111,7 @@ public class RecipeController {
         m.put("id", r.getId());
         m.put("name", r.getName());
         m.put("servings", r.getServings());
+        m.put("sourceUrl", r.getSourceUrl());
         m.put("instructions", r.getInstructions());
         m.put("ingredients", r.getIngredients().stream().map(Ingredient::getName).collect(Collectors.toList()));
         Meal meal = r.getMeal();
@@ -122,5 +124,5 @@ public class RecipeController {
     }
 
     record RecipeRequest(String name, Integer servings, String instructions,
-                         List<String> ingredients, Long mealId, Long cookbookId) {}
+                         List<String> ingredients, Long mealId, Long cookbookId, String sourceUrl) {}
 }

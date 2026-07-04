@@ -33,6 +33,7 @@ public class Recipe {
 
     private String name;
     private Integer servings;
+    private String sourceUrl;
 
     @Column(columnDefinition = "text")
     private String instructions;

@@ -240,25 +240,28 @@ function MealLibrary() {
                         <HStack justify="space-between" align="flex-start">
                             <Box flex={1} minW={0}>
                                 <HStack spacing={2} align="center" flexWrap="wrap">
-                                    {meal.recipeLink ? (
-                                        <Box>
-                                            <Link
-                                                href={meal.recipeLink}
-                                                isExternal
-                                                fontWeight="semibold"
-                                                fontSize="sm"
-                                                color="blue.600"
-                                                _hover={{ textDecoration: 'underline' }}
-                                            >
-                                                {meal.name} ↗
-                                            </Link>
-                                            {recipeDomain(meal.recipeLink) && (
-                                                <Text fontSize="xs" color="gray.400" lineHeight="1.2">{recipeDomain(meal.recipeLink)}</Text>
-                                            )}
-                                        </Box>
-                                    ) : (
-                                        <Text fontWeight="semibold" fontSize="sm">{meal.name}</Text>
-                                    )}
+                                    {(() => {
+                                        const url = meal.recipeLink || meal.recipe?.sourceUrl;
+                                        return url ? (
+                                            <Box>
+                                                <Link
+                                                    href={url}
+                                                    isExternal
+                                                    fontWeight="semibold"
+                                                    fontSize="sm"
+                                                    color="blue.600"
+                                                    _hover={{ textDecoration: 'underline' }}
+                                                >
+                                                    {meal.name} ↗
+                                                </Link>
+                                                {recipeDomain(url) && (
+                                                    <Text fontSize="xs" color="gray.400" lineHeight="1.2">{recipeDomain(url)}</Text>
+                                                )}
+                                            </Box>
+                                        ) : (
+                                            <Text fontWeight="semibold" fontSize="sm">{meal.name}</Text>
+                                        );
+                                    })()}
                                     {meal.shared && <Badge colorScheme="blue" fontSize="10px">shared</Badge>}
                                 </HStack>
 

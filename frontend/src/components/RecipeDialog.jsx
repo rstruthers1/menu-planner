@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import {
-    Button, FormControl, FormHelperText, FormLabel, HStack, Input, Modal, ModalBody,
-    ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalOverlay,
+    Box, Button, Collapse, FormControl, FormHelperText, FormLabel, HStack, Input, Link,
+    Modal, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalOverlay,
     Select, Stack, Textarea, useToast,
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 import IngredientRows from './IngredientRows';
 
-const EMPTY = { name: '', servings: '', instructions: '', ingredients: [], mealId: '', cookbookId: '' };
+const EMPTY = { name: '', servings: '', sourceUrl: '', instructions: '', ingredients: [], mealId: '', cookbookId: '' };
 
 function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, onCookbookCreated }) {
     const isEdit = !!editRecipe;
@@ -16,16 +16,21 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
     const [newCookbookName, setNewCookbookName] = useState('');
     const [savingCookbook, setSavingCookbook] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [showBulk, setShowBulk] = useState(false);
+    const [bulkText, setBulkText] = useState('');
     const toast = useToast();
 
     useEffect(() => {
         if (!isOpen) return;
         setAddingCookbook(false);
         setNewCookbookName('');
+        setShowBulk(false);
+        setBulkText('');
         if (isEdit) {
             setForm({
                 name: editRecipe.name || '',
                 servings: editRecipe.servings ?? '',
+                sourceUrl: editRecipe.sourceUrl || '',
                 instructions: editRecipe.instructions || '',
                 ingredients: editRecipe.ingredients || [],
                 mealId: editRecipe.mealId ?? '',
@@ -77,6 +82,7 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
                 body: JSON.stringify({
                     name: form.name.trim(),
                     servings: form.servings !== '' ? Number(form.servings) : null,
+                    sourceUrl: form.sourceUrl.trim() || null,
                     instructions: form.instructions || null,
                     ingredients: form.ingredients.filter(i => i.trim()),
                     mealId: form.mealId !== '' ? Number(form.mealId) : null,
@@ -112,6 +118,11 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
                             <FormControl isRequired>
                                 <FormLabel>Recipe Name</FormLabel>
                                 <Input name="name" value={form.name} onChange={handleChange} autoFocus />
+                            </FormControl>
+
+                            <FormControl>
+                                <FormLabel fontSize="sm">Source URL — optional</FormLabel>
+                                <Input name="sourceUrl" value={form.sourceUrl} onChange={handleChange} placeholder="https://…" size="sm" />
                             </FormControl>
 
                             <FormControl>
@@ -188,7 +199,47 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
                             </FormControl>
 
                             <FormControl>
-                                <FormLabel fontSize="sm">Ingredients</FormLabel>
+                                <HStack justify="space-between" mb={1}>
+                                    <FormLabel fontSize="sm" mb={0}>Ingredients</FormLabel>
+                                    <Link
+                                        fontSize="xs"
+                                        color="purple.500"
+                                        cursor="pointer"
+                                        onClick={() => { setShowBulk(b => !b); setBulkText(''); }}
+                                    >
+                                        {showBulk ? 'Cancel paste' : 'Paste a list'}
+                                    </Link>
+                                </HStack>
+                                <Collapse in={showBulk} animateOpacity>
+                                    <Box mb={2}>
+                                        <Textarea
+                                            size="sm"
+                                            placeholder={"1 cup flour\n2 eggs\n1/2 tsp salt\n…"}
+                                            value={bulkText}
+                                            onChange={e => setBulkText(e.target.value)}
+                                            rows={5}
+                                            resize="vertical"
+                                            mb={2}
+                                        />
+                                        <Button
+                                            size="xs"
+                                            colorScheme="purple"
+                                            onClick={() => {
+                                                const lines = bulkText
+                                                    .split('\n')
+                                                    .map(l => l.trim())
+                                                    .filter(l => l.length > 0);
+                                                if (lines.length === 0) return;
+                                                setForm(f => ({ ...f, ingredients: [...f.ingredients, ...lines] }));
+                                                setBulkText('');
+                                                setShowBulk(false);
+                                            }}
+                                            isDisabled={!bulkText.trim()}
+                                        >
+                                            Add {bulkText.split('\n').filter(l => l.trim()).length || ''} ingredients
+                                        </Button>
+                                    </Box>
+                                </Collapse>
                                 <IngredientRows
                                     value={form.ingredients}
                                     onChange={ings => setForm(f => ({ ...f, ingredients: ings }))}
