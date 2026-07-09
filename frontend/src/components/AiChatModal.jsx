@@ -103,18 +103,26 @@ function AiChatModal({ isOpen, onClose, dateStr, dayName, weather, existingMeals
     const [loading, setLoading] = useState(false);
     const inputRef = useRef(null);
     const bottomRef = useRef(null);
+    const lastDateRef = useRef(null);
 
     useEffect(() => {
         if (!isOpen) {
-            setMessages([]);
-            setApiHistory([]);
             setInput('');
             return;
         }
 
+        setTimeout(() => inputRef.current?.focus(), 50);
+
+        if (lastDateRef.current === dateStr) {
+            return; // same day reopened — keep existing messages
+        }
+
+        lastDateRef.current = dateStr;
+        setMessages([]);
+        setApiHistory([]);
+
         const initHistory = [{ role: 'user', content: INIT_PROMPT }];
         setLoading(true);
-        setTimeout(() => inputRef.current?.focus(), 50);
 
         authFetch('/api/suggest-meals/chat', {
             method: 'POST',
@@ -129,7 +137,7 @@ function AiChatModal({ isOpen, onClose, dateStr, dayName, weather, existingMeals
                 setMessages([{ role: 'assistant', text: 'Could not load suggestions. Try typing a request below.', suggestions: [] }]);
             })
             .finally(() => setLoading(false));
-    }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [isOpen, dateStr]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

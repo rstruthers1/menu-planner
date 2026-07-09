@@ -2,6 +2,8 @@ package com.menuplanner.controller;
 
 import com.menuplanner.domain.Household;
 import com.menuplanner.domain.MenuEntry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.menuplanner.domain.WeatherRecord;
 import com.menuplanner.repository.WeatherRecordRepository;
 import com.menuplanner.security.AppUserDetails;
@@ -17,6 +19,8 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/suggest-meals")
 public class MealSuggestionController {
+
+    private static final Logger log = LoggerFactory.getLogger(MealSuggestionController.class);
 
     private final MealSuggestionService suggestionService;
     private final MenuEntryService menuEntryService;
@@ -52,10 +56,12 @@ public class MealSuggestionController {
     public Map<String, Object> chat(@RequestBody ChatRequest request,
                                     @AuthenticationPrincipal AppUserDetails userDetails) {
         List<Map<String, Object>> history = buildHistory(userDetails.getHousehold());
+        List<String> recentMealNames = menuEntryService.getRecentMealNames(userDetails.getHousehold());
+        log.info("Recent meal names (last 14 days): {}", recentMealNames);
         return suggestionService.chat(
-                request.targetDate(), request.dayName(),
+                request.targetDate(), request.dayName(), request.weekStart(),
                 request.weather(), request.existingMeals(),
-                request.mealLibrary(), request.messages(), history
+                request.mealLibrary(), request.messages(), history, recentMealNames
         );
     }
 
@@ -71,6 +77,7 @@ public class MealSuggestionController {
 
         return pastMeals.stream().map(meal -> {
             Map<String, Object> item = new LinkedHashMap<>();
+            item.put("mealDate", meal.getMealDate() != null ? meal.getMealDate().toString() : null);
             item.put("dayOfWeek", meal.getDayOfWeek());
             item.put("mealName", meal.getMeal() != null ? meal.getMeal().getName() : null);
             WeatherRecord w = meal.getMealDate() != null ? weatherByDate.get(meal.getMealDate()) : null;

@@ -91,6 +91,16 @@ public class MenuEntryService {
         repository.deleteById(id);
     }
 
+    public List<String> getRecentMealNames(Household household) {
+        LocalDate cutoff = LocalDate.now().minusDays(14);
+        return repository.findByMealDateBetweenAndHousehold(cutoff, LocalDate.now(), household)
+                .stream()
+                .map(e -> e.getMeal() != null ? e.getMeal().getName() : null)
+                .filter(m -> m != null && !m.isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
     public List<String> getMealNames(Household household) {
         return mealRepository.findNamesForHousehold(household);
     }

@@ -44,7 +44,6 @@ function WeekHelper({ weekStart, weather, entries, toDateStr, onSuggestions }) {
             })
             .then(suggestions => {
                 onSuggestions(suggestions);
-                setPrompt('');
             })
             .catch(() => setError('Could not get suggestions. Check that ANTHROPIC_API_KEY is set.'))
             .finally(() => setLoading(false));

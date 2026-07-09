@@ -14,6 +14,8 @@ import { authFetch } from '../utils/api';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+const AI_ENABLED = false;
+
 function getSeason(dateStr) {
     const m = new Date(dateStr + 'T00:00:00').getMonth() + 1;
     if (m >= 3 && m <= 5) return 'SPRING';
@@ -264,13 +266,15 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
             })() : null}
         </DragOverlay>
         <div>
-            <WeekHelper
-                weekStart={weekStart}
-                weather={weather}
-                entries={entries}
-                toDateStr={toDateStr}
-                onSuggestions={handleSuggestions}
-            />
+            {AI_ENABLED && (
+                <WeekHelper
+                    weekStart={weekStart}
+                    weather={weather}
+                    entries={entries}
+                    toDateStr={toDateStr}
+                    onSuggestions={handleSuggestions}
+                />
+            )}
             <CandidateTray
                 candidates={candidates}
                 setCandidates={setCandidates}
@@ -338,7 +342,7 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
                 </AlertDialogContent>
             </AlertDialogOverlay>
         </AlertDialog>
-        {aiChatDay && (() => {
+        {AI_ENABLED && aiChatDay && (() => {
             const season = getSeason(aiChatDay.dateStr);
             const seasonMeals = mealLibrary
                 .filter(m => !m.seasons || m.seasons.length === 0 || m.seasons.includes(season))

@@ -29,6 +29,8 @@ function toLocalDateStr() {
 
 const SEASON_LABELS = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall', WINTER: 'Winter' };
 
+const AI_ENABLED = false;
+
 function getSeason(dateStr) {
     const m = new Date(dateStr + 'T00:00:00').getMonth() + 1;
     if (m >= 3 && m <= 5) return 'SPRING';
@@ -301,16 +303,18 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealL
             </Popover>
 
             {/* AI meal chat */}
-            <Button
-                size="xs"
-                variant="ghost"
-                color="purple.300"
-                onClick={() => { setPickerOpen(false); onOpenAiChat(); }}
-                title={`Get meal ideas for ${dayName}`}
-                px={1}
-            >
-                ✨
-            </Button>
+            {AI_ENABLED && (
+                <Button
+                    size="xs"
+                    variant="ghost"
+                    color="purple.300"
+                    onClick={() => { setPickerOpen(false); onOpenAiChat(); }}
+                    title={`Get meal ideas for ${dayName}`}
+                    px={1}
+                >
+                    ✨
+                </Button>
+            )}
 
             <Box minW="85px" textAlign="right">
                 {weather ? (

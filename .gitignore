@@ -15,3 +15,6 @@ frontend/dist/
 # Local assistant memory and data
 .claude/
 data/
+
+# Database backups
+backup/*.sql

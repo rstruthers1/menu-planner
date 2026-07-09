@@ -170,7 +170,19 @@ function App() {
                         <History key={historyKey} />
                     </TabPanel>
                     <TabPanel p={0} pt={2}>
-                        <MealLibrary />
+                        <MealLibrary onMealSaved={(saved) => {
+                            const meal = {
+                                id: saved.id, name: saved.name,
+                                recipeLink: saved.recipeLink ?? null, notes: saved.notes ?? null,
+                                minTemp: saved.minTemp ?? null, maxTemp: saved.maxTemp ?? null,
+                                seasons: saved.seasons || [], sides: saved.sides || [],
+                            };
+                            setMealLibrary(prev => {
+                                const exists = prev.some(m => m.id === saved.id);
+                                const next = exists ? prev.map(m => m.id === saved.id ? meal : m) : [...prev, meal];
+                                return next.sort((a, b) => a.name.localeCompare(b.name));
+                            });
+                        }} />
                     </TabPanel>
                     <TabPanel p={0} pt={2}>
                         <RecipeList mealLibrary={mealLibrary} />

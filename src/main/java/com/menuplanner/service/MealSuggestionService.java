@@ -8,6 +8,8 @@ import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +20,8 @@ import java.util.Map;
 
 @Service
 public class MealSuggestionService {
+
+    private static final Logger log = LoggerFactory.getLogger(MealSuggestionService.class);
 
     @Value("${anthropic.api-key:}")
     private String apiKey;
@@ -100,12 +104,13 @@ public class MealSuggestionService {
     }
 
     public Map<String, Object> chat(
-            String targetDate, String dayName,
+            String targetDate, String dayName, String weekStart,
             Map<String, Object> weather,
             Map<String, String> existingMeals,
             List<String> mealLibrary,
             List<Map<String, String>> messages,
-            List<Map<String, Object>> history) {
+            List<Map<String, Object>> history,
+            List<String> recentMealNames) {
 
         AnthropicClient client = AnthropicOkHttpClient.builder().apiKey(apiKey).build();
 
@@ -127,7 +132,7 @@ public class MealSuggestionService {
                   "You often have this when it's around 80°F", "A go-to for warm cloudy days", etc.
                 - Day-of-week history is a soft consideration — suggest good meals from the full library,
                   not just meals tied to that day
-                - If suggestions would repeat meals already planned this week, skip them
+                - Do NOT suggest any meal listed under "Meals from the last 2 weeks" or "Already planned this week"
                 - If the message is purely conversational with no meal request, set suggestions to []
                 """;
 
@@ -181,6 +186,22 @@ public class MealSuggestionService {
             }
         }
 
+        if (recentMealNames != null && !recentMealNames.isEmpty()) {
+            ctx.append("Meals from the last 2 weeks — do not suggest any of these:\n");
+            recentMealNames.forEach(m -> ctx.append("- ").append(m).append("\n"));
+            ctx.append("\n");
+        }
+
+        if (targetDate != null) {
+            try {
+                int month = java.time.LocalDate.parse(targetDate).getMonthValue();
+                String season = month >= 3 && month <= 5 ? "Spring"
+                        : month >= 6 && month <= 8 ? "Summer"
+                        : month >= 9 && month <= 11 ? "Fall" : "Winter";
+                ctx.append("Current season: ").append(season).append("\n\n");
+            } catch (Exception ignored) {}
+        }
+
         if (existingMeals != null && !existingMeals.isEmpty()) {
             ctx.append("Already planned this week (do not repeat):\n");
             existingMeals.forEach((d, m) -> ctx.append(d).append(": ").append(m).append("\n"));
@@ -216,13 +237,32 @@ public class MealSuggestionService {
 
         Map<String, Object> result = parseChatResponse(raw);
 
-        // Remove suggestions already planned this week
-        if (existingMeals != null && !existingMeals.isEmpty()) {
-            java.util.Set<String> planned = new java.util.HashSet<>(existingMeals.values());
-            @SuppressWarnings("unchecked")
-            List<Map<String, String>> suggestions = (List<Map<String, String>>) result.get("suggestions");
-            if (suggestions != null) {
-                suggestions.removeIf(s -> planned.contains(s.get("name")));
+        // Hard filter: remove any suggestion used in the last 14 days or already planned this week
+        java.util.Set<String> excluded = new java.util.HashSet<>();
+        if (existingMeals != null) excluded.addAll(existingMeals.values());
+        if (recentMealNames != null) excluded.addAll(recentMealNames);
+        log.info("Hard filter excluded ({} meals): {}", excluded.size(), excluded);
+        @SuppressWarnings("unchecked")
+        List<Map<String, String>> suggestions = (List<Map<String, String>>) result.get("suggestions");
+        if (suggestions != null) {
+            List<String> before = suggestions.stream().map(s -> s.get("name")).collect(java.util.stream.Collectors.toList());
+            suggestions.removeIf(s -> excluded.contains(s.get("name")));
+            log.info("Suggestions before filter: {} | after: {}", before, suggestions.stream().map(s -> s.get("name")).collect(java.util.stream.Collectors.toList()));
+
+            // Backfill to at least 3 from eligible library meals if filter left too few
+            if (suggestions.size() < 3 && mealLibrary != null) {
+                java.util.Set<String> taken = new java.util.HashSet<>(excluded);
+                suggestions.stream().map(s -> s.get("name")).forEach(taken::add);
+                List<String> eligible = mealLibrary.stream()
+                        .filter(m -> !taken.contains(m))
+                        .collect(java.util.stream.Collectors.toList());
+                java.util.Collections.shuffle(eligible);
+                for (int i = 0; i < eligible.size() && suggestions.size() < 3; i++) {
+                    Map<String, String> item = new LinkedHashMap<>();
+                    item.put("name", eligible.get(i));
+                    item.put("reason", "");
+                    suggestions.add(item);
+                }
             }
         }
 

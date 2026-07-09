@@ -103,7 +103,7 @@ function RecipeModal({ recipe, isOpen, onClose }) {
     );
 }
 
-function MealLibrary() {
+function MealLibrary({ onMealSaved }) {
     const [meals, setMeals] = useState([]);
     const [search, setSearch] = useState('');
     const [filterNoSeason, setFilterNoSeason] = useState(false);
@@ -152,11 +152,13 @@ function MealLibrary() {
             ? { ...saved, seasons: saved.seasons || [], sides: saved.sides || [], recipe: saved.recipe ?? null }
             : m
         ));
+        onMealSaved?.(saved);
     };
 
     const handleAdded = (saved) => {
         setMeals(prev => [...prev, { ...saved, seasons: saved.seasons || [], sides: saved.sides || [], recipe: saved.recipe ?? null }]
             .sort((a, b) => a.name.localeCompare(b.name)));
+        onMealSaved?.(saved);
     };
 
     const handleDelete = async (meal) => {
