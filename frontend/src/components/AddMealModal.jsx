@@ -7,10 +7,12 @@ import {
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 import TagInput from './TagInput';
+import { COOK_METHODS } from '../utils/mealConstants';
 
 const EMPTY_FORM = {
     name: '', recipeLink: '', notes: '', shared: false,
     minTemp: '', maxTemp: '', seasons: [],
+    cookMethods: [], weekendOnly: false,
     sides: [],
     cookbookId: '',
     linkedRecipeId: '',
@@ -37,6 +39,8 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
                 minTemp: editMeal.minTemp ?? '',
                 maxTemp: editMeal.maxTemp ?? '',
                 seasons: editMeal.seasons || [],
+                cookMethods: editMeal.cookMethods || [],
+                weekendOnly: editMeal.weekendOnly ?? false,
                 sides: editMeal.sides || [],
                 cookbookId: editMeal.cookbookId != null ? String(editMeal.cookbookId) : '',
                 linkedRecipeId: editMeal.recipe?.id != null ? String(editMeal.recipe.id) : '',
@@ -72,6 +76,8 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
                     minTemp: form.minTemp !== '' ? Number(form.minTemp) : null,
                     maxTemp: form.maxTemp !== '' ? Number(form.maxTemp) : null,
                     seasons: form.seasons,
+                    cookMethods: form.cookMethods,
+                    weekendOnly: form.weekendOnly,
                     sides: form.sides,
                     cookbookId: form.cookbookId !== '' ? Number(form.cookbookId) : null,
                 }),
@@ -257,6 +263,29 @@ function AddMealModal({ isOpen, onClose, onAdded, editMeal }) {
                                     </HStack>
                                 </CheckboxGroup>
                             </FormControl>
+                            <FormControl>
+                                <FormLabel fontSize="sm">Cooking method — optional</FormLabel>
+                                <Text fontSize="xs" color="gray.500" mb={2}>Tag how this meal is cooked so you can exclude methods during planning.</Text>
+                                <CheckboxGroup
+                                    value={form.cookMethods}
+                                    onChange={val => setForm(f => ({ ...f, cookMethods: val }))}
+                                    colorScheme="orange"
+                                >
+                                    <HStack spacing={3} flexWrap="wrap">
+                                        {COOK_METHODS.map(m => (
+                                            <Checkbox key={m.value} value={m.value}>{m.label}</Checkbox>
+                                        ))}
+                                    </HStack>
+                                </CheckboxGroup>
+                            </FormControl>
+                            <Checkbox
+                                isChecked={form.weekendOnly}
+                                onChange={e => setForm(f => ({ ...f, weekendOnly: e.target.checked }))}
+                                colorScheme="purple"
+                            >
+                                <Text as="span" fontSize="sm">Weekend only</Text>
+                                <Text as="span" fontSize="xs" color="gray.400"> — won't be suggested Mon–Fri</Text>
+                            </Checkbox>
                             <Checkbox
                                 isChecked={form.shared}
                                 onChange={e => setForm(f => ({ ...f, shared: e.target.checked }))}

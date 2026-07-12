@@ -10,6 +10,7 @@ import CandidateTray from './CandidateTray';
 import DayRow from './DayRow';
 import MealDetailModal from './MealDetailModal';
 import WeekHelper from './WeekHelper';
+import SuggestPanel from './SuggestPanel';
 import { authFetch } from '../utils/api';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -266,6 +267,13 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
             })() : null}
         </DragOverlay>
         <div>
+            <SuggestPanel
+                weekStart={weekStart}
+                weather={weather}
+                entries={entries}
+                toDateStr={toDateStr}
+                onSuggestions={handleSuggestions}
+            />
             {AI_ENABLED && (
                 <WeekHelper
                     weekStart={weekStart}

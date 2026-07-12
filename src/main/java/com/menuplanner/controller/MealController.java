@@ -125,6 +125,33 @@ public class MealController {
                 : List.of());
     }
 
+    @PatchMapping("/{id}/cook-methods")
+    public Map<String, Object> updateCookMethods(@PathVariable Long id,
+                                                  @RequestBody Map<String, Object> body,
+                                                  @AuthenticationPrincipal AppUserDetails userDetails) {
+        Meal meal = mealRepository.findByIdForHousehold(id, userDetails.getHousehold().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Meal not found"));
+        @SuppressWarnings("unchecked")
+        List<String> cookMethods = (List<String>) body.get("cookMethods");
+        meal.setCookMethods(cookMethods == null || cookMethods.isEmpty() ? null
+                : cookMethods.stream().filter(s -> s != null && !s.isBlank()).collect(Collectors.joining(",")));
+        mealRepository.save(meal);
+        return Map.of("id", meal.getId(), "cookMethods", meal.getCookMethods() != null
+                ? Arrays.stream(meal.getCookMethods().split(",")).filter(s -> !s.isBlank()).collect(Collectors.toList())
+                : List.of());
+    }
+
+    @PatchMapping("/{id}/weekend-only")
+    public Map<String, Object> updateWeekendOnly(@PathVariable Long id,
+                                                  @RequestBody Map<String, Object> body,
+                                                  @AuthenticationPrincipal AppUserDetails userDetails) {
+        Meal meal = mealRepository.findByIdForHousehold(id, userDetails.getHousehold().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Meal not found"));
+        meal.setWeekendOnly(Boolean.TRUE.equals(body.get("weekendOnly")));
+        mealRepository.save(meal);
+        return Map.of("id", meal.getId(), "weekendOnly", meal.isWeekendOnly());
+    }
+
     @PatchMapping("/{id}/cookbook")
     public Map<String, Object> linkCookbook(@PathVariable Long id,
                                              @RequestBody Map<String, Object> body,
@@ -214,6 +241,9 @@ public class MealController {
         meal.setMaxTemp(req.maxTemp());
         meal.setSeasons(req.seasons() == null || req.seasons().isEmpty() ? null
                 : req.seasons().stream().filter(s -> s != null && !s.isBlank()).collect(Collectors.joining(",")));
+        meal.setCookMethods(req.cookMethods() == null || req.cookMethods().isEmpty() ? null
+                : req.cookMethods().stream().filter(s -> s != null && !s.isBlank()).collect(Collectors.joining(",")));
+        meal.setWeekendOnly(Boolean.TRUE.equals(req.weekendOnly()));
         if (req.cookbookId() != null) {
             meal.setCookbook(cookbookRepository.findById(req.cookbookId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cookbook not found")));
@@ -288,6 +318,10 @@ public class MealController {
         resp.put("seasons", m.getSeasons() != null
                 ? Arrays.stream(m.getSeasons().split(",")).filter(s -> !s.isBlank()).collect(Collectors.toList())
                 : List.of());
+        resp.put("cookMethods", m.getCookMethods() != null
+                ? Arrays.stream(m.getCookMethods().split(",")).filter(s -> !s.isBlank()).collect(Collectors.toList())
+                : List.of());
+        resp.put("weekendOnly", m.isWeekendOnly());
         Recipe recipe = m.getRecipe();
         if (recipe != null) {
             Map<String, Object> recipeMap = new LinkedHashMap<>();
@@ -312,5 +346,6 @@ public class MealController {
 
     record MealRequest(String name, String recipeLink, String notes, Boolean shared,
                        Integer minTemp, Integer maxTemp, List<String> seasons,
+                       List<String> cookMethods, Boolean weekendOnly,
                        RecipeRequest recipe, List<String> sides, Long cookbookId) {}
 }

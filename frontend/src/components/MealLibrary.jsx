@@ -7,6 +7,7 @@ import {
 
 import AddMealModal from './AddMealModal';
 import { authFetch, recipeDomain } from '../utils/api';
+import { COOK_METHODS } from '../utils/mealConstants';
 
 const SEASONS = ['SPRING', 'SUMMER', 'FALL', 'WINTER'];
 const SEASON_SHORT = { SPRING: 'Spr', SUMMER: 'Sum', FALL: 'Fall', WINTER: 'Win' };
@@ -69,6 +70,96 @@ function SeasonChips({ meal, onUpdate }) {
     );
 }
 
+function CookMethodChips({ meal, onUpdate }) {
+    const [saving, setSaving] = useState(false);
+    const toast = useToast();
+
+    const toggle = async (method) => {
+        if (saving) return;
+        const current = Array.isArray(meal.cookMethods) ? meal.cookMethods : [];
+        const next = current.includes(method) ? current.filter(m => m !== method) : [...current, method];
+        setSaving(true);
+        try {
+            await authFetch(`/api/meals/${meal.id}/cook-methods`, {
+                method: 'PATCH',
+                body: JSON.stringify({ cookMethods: next }),
+            });
+            onUpdate(meal.id, next);
+        } catch {
+            toast({ title: 'Could not update cooking methods', status: 'error', duration: 3000, isClosable: true });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const active = Array.isArray(meal.cookMethods) ? meal.cookMethods : [];
+
+    return (
+        <HStack spacing={1} mt="4px" opacity={saving ? 0.5 : 1} flexWrap="wrap" title="Click to toggle cooking method">
+            {COOK_METHODS.map(m => (
+                <Badge
+                    key={m.value}
+                    fontSize="9px"
+                    px="5px"
+                    py="1px"
+                    cursor={saving ? 'not-allowed' : 'pointer'}
+                    colorScheme={active.includes(m.value) ? 'orange' : 'gray'}
+                    variant={active.includes(m.value) ? 'subtle' : 'outline'}
+                    onClick={() => toggle(m.value)}
+                    userSelect="none"
+                    _hover={{ opacity: 0.75 }}
+                    transition="opacity 0.1s"
+                >
+                    {m.label}
+                </Badge>
+            ))}
+        </HStack>
+    );
+}
+
+function WeekendOnlyBadge({ meal, onUpdate }) {
+    const [saving, setSaving] = useState(false);
+    const toast = useToast();
+
+    const toggle = async () => {
+        if (saving) return;
+        const next = !meal.weekendOnly;
+        setSaving(true);
+        try {
+            await authFetch(`/api/meals/${meal.id}/weekend-only`, {
+                method: 'PATCH',
+                body: JSON.stringify({ weekendOnly: next }),
+            });
+            onUpdate(meal.id, next);
+        } catch {
+            toast({ title: 'Could not update', status: 'error', duration: 3000, isClosable: true });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <Badge
+            mt="4px"
+            display="inline-block"
+            fontSize="9px"
+            px="5px"
+            py="1px"
+            cursor={saving ? 'not-allowed' : 'pointer'}
+            colorScheme={meal.weekendOnly ? 'purple' : 'gray'}
+            variant={meal.weekendOnly ? 'subtle' : 'outline'}
+            onClick={toggle}
+            userSelect="none"
+            opacity={saving ? 0.5 : 1}
+            _hover={{ opacity: 0.75 }}
+            transition="opacity 0.1s"
+            title="Click to toggle weekend-only"
+        >
+            weekend only
+        </Badge>
+    );
+}
+
 function RecipeModal({ recipe, isOpen, onClose }) {
     if (!recipe) return null;
     return (
@@ -124,6 +215,14 @@ function MealLibrary({ onMealSaved }) {
 
     const handleSeasonUpdate = (mealId, newSeasons) => {
         setMeals(prev => prev.map(m => m.id === mealId ? { ...m, seasons: newSeasons } : m));
+    };
+
+    const handleCookMethodUpdate = (mealId, newMethods) => {
+        setMeals(prev => prev.map(m => m.id === mealId ? { ...m, cookMethods: newMethods } : m));
+    };
+
+    const handleWeekendOnlyUpdate = (mealId, weekendOnly) => {
+        setMeals(prev => prev.map(m => m.id === mealId ? { ...m, weekendOnly } : m));
     };
 
     const filtered = meals.filter(m => {
@@ -268,6 +367,8 @@ function MealLibrary({ onMealSaved }) {
                                 </HStack>
 
                                 <SeasonChips meal={meal} onUpdate={handleSeasonUpdate} />
+                                <CookMethodChips meal={meal} onUpdate={handleCookMethodUpdate} />
+                                <WeekendOnlyBadge meal={meal} onUpdate={handleWeekendOnlyUpdate} />
 
                                 {hasTempConstraint(meal) && (
                                     <Box mt="4px">

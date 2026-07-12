@@ -34,6 +34,12 @@ public class Meal {
     @Column(length = 50)
     private String seasons; // comma-separated: SPRING,SUMMER,FALL,WINTER; null = unrestricted
 
+    @Column(length = 100)
+    private String cookMethods; // comma-separated: GRILL,OVEN,STOVE,SLOW_COOKER,AIR_FRYER,INSTANT_POT,NO_COOK; null = unspecified
+
+    @Column(columnDefinition = "boolean not null default false")
+    private boolean weekendOnly = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cookbook_id")
     private Cookbook cookbook;
