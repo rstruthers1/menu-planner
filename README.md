@@ -1,83 +1,79 @@
-# Menu Planner App
+# Menu Planner
 
-A simple full-stack web application for planning and displaying weekly dinner menus, enriched with historical weather data.
+A full-stack household meal planning app. Plan your week, browse history, manage a meal library with recipes, and get rules-based suggestions filtered by season, weather, cooking method, and recent history.
 
-## 🧩 Project Overview
+## Tech Stack
 
-This app reads menu and weather data from an Excel spreadsheet, stores it in an in-memory H2 database, and displays it in a React frontend. Users can also retrieve historical weather for any day using a button that fetches data from the Open-Meteo API.
+**Backend** — Spring Boot 3.5, PostgreSQL, Liquibase, Spring Security (JWT)  
+**Frontend** — React + Vite, Chakra UI v2  
+**External API** — [Open-Meteo](https://api.open-meteo.com) for weather (Minneapolis/Golden Valley area)
 
----
+## Running Locally
 
-## ⚙️ Tech Stack
+### Prerequisites
 
-- **Backend**: Spring Boot (Java)
-    - Reads spreadsheet via Apache POI
-    - Inserts parsed data into H2
-    - Serves data via REST endpoints
-    - Fetches historical weather from Open-Meteo API
-- **Frontend**: React + Vite
-    - Displays weekly dinner menus
-    - Weather is shown per day at ~5:30 PM
-    - Button-triggered weather fetch for specific days
-- **Database**: H2 (in-memory, for development)
-- **External API**: [api.open-meteo.com](https://api.open-meteo.com)
+- Java 21+
+- Node 18+
+- Docker (for PostgreSQL)
 
----
+### Backend
 
-## 🛠️ Setup Instructions
-
-### Backend (Spring Boot)
-
-1. Clone the repo.
-2. Navigate to the backend directory.
-3. Build and run the application:
+Start PostgreSQL via Docker Compose, then run Spring Boot:
 
 ```bash
-./mvnw spring-boot:run
+docker compose up -d
+mvn spring-boot:run
 ```
 
-The app starts at `http://localhost:8080`.
+Backend starts at `http://localhost:8080`.  
+H2 console (dev only): `http://localhost:8080/h2-console`
 
-### Frontend (React + Vite)
-
-1. Navigate to the frontend directory.
-2. Install dependencies and run dev server:
+### Frontend
 
 ```bash
+cd frontend
 npm install
 npm run dev
 ```
 
-The app will run at `http://localhost:5173`.
+Frontend starts at `http://localhost:5173`. Vite proxies `/api` to the backend.
 
-Ensure your `vite.config.ts` includes a proxy for API calls:
+## Features
 
-```ts
-server: {
-  proxy: {
-    '/weather': 'http://localhost:8080'
-  }
-}
+- **Week planner** — plan meals day by day with weather context; drag and drop to swap days
+- **Meal library** — add and tag meals with season suitability, temperature range, cooking method, and weekend-only flag
+- **Rules-based suggestions** — fill empty days automatically, respecting no-repeat window, season, weather, excluded cooking methods (e.g. skip grilling during a heat wave), and weekend-only meals skipped on weeknights
+- **Recipe management** — store ingredients and instructions; link recipes to meals and cookbooks
+- **History** — browse past meal entries
+- **Candidate tray** — hold meals you're considering by dragging them off the calendar
+- **Print view** — clean printable week summary
+- **Multi-household** — each household has its own meal library and planner; meals can optionally be shared globally
+- **Weather** — auto-fetched per day from Open-Meteo (archive for past dates, forecast for upcoming)
+
+## Database Backup
+
+With Docker running:
+
+```powershell
+.\backup\backup.ps1
 ```
 
----
+Saves a timestamped `.sql` dump to the `backup/` folder.
 
-## 📄 Features
+## Dev Commands
 
-- 📥 Load menus and weather into the database from an Excel file
-- 🌦️ Retrieve ~5:30 PM weather from Open-Meteo by date
-- 🖥️ Display menus and weather in a clean web interface
-- ⚡ Fast local dev using Vite + H2
+```bash
+# Backend
+mvn spring-boot:run       # start backend
+mvn test                  # run tests
+mvn package               # build fat JAR
 
----
+# Frontend (from frontend/)
+npm run dev               # start dev server
+npm run build             # production build
+npm run lint              # ESLint
+```
 
-## 📌 Future Ideas
+## Authors
 
-- PostgreSQL for persistent storage
-- User accounts to manage personal menus
-- Upload new spreadsheets through the UI
-- AI-assisted meal recommendations based on weather
-
----
-
-## 🧑‍🍳 Created With ❤️ by Rachel + ChatGPT
+Rachel Struthers
