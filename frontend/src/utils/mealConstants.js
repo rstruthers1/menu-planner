@@ -1,5 +1,6 @@
 export const COOK_METHODS = [
     { value: 'GRILL', label: 'Grill' },
+    { value: 'INDOOR_GRILL', label: 'Indoor Grill' },
     { value: 'OVEN', label: 'Oven' },
     { value: 'STOVE', label: 'Stovetop' },
     { value: 'SLOW_COOKER', label: 'Slow Cooker' },

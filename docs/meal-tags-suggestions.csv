@@ -1,0 +1,80 @@
+name,cook_methods,weekend_only,seasons,notes
+Asian Chicken Lettuce Wraps,STOVE,false,SPRING|SUMMER,already has STOVE; light spring/summer meal
+Barbecued Pulled Pork Sandwiches,SLOW_COOKER,false,,already has SLOW_COOKER
+Beef Stroganoff,STOVE,false,FALL|WINTER,already has STOVE; hearty cold-weather dish
+"Blue Cheese, Chicken and Apple Panini",INDOOR_GRILL,false,SUMMER|FALL,apple = fall flavors
+"Brats, Sweetcorn",GRILL,false,SUMMER,already has GRILL; corn in season summer
+Byerlys Brats,GRILL,false,SPRING|SUMMER|FALL,already has GRILL
+Chicken and Black Bean Chili,SLOW_COOKER,false,WINTER|SPRING|FALL,already set
+Chicken and Sweet Potato Stew,SLOW_COOKER,false,SPRING|FALL|WINTER,already set
+Chicken Caesar Wraps,NO_COOK,false,,assembled from pre-cooked/chicken tenders
+Chicken Chili,STOVE,false,WINTER|FALL|SPRING,already set
+Chicken Fajitas,STOVE,false,,year-round
+Chicken Fried Rice,STOVE,false,,already has STOVE
+Chicken Hash,STOVE,false,,
+Chicken Pita Sandwiches,NO_COOK,false,,quick assembly
+Chicken Ragout with Potatoes and Olives,STOVE,false,"","braised on stove, any season"
+Chicken Salad Pita Sandwiches,NO_COOK,false,SPRING|SUMMER,light summer meal
+Chicken tenders,NO_COOK,false,,
+Chicken tender wraps,NO_COOK,false,,
+Chicken Tender Wraps,NO_COOK,false,,duplicate of above?
+Chicken with Italian Sausage,SLOW_COOKER,false,FALL|WINTER,
+Chinese Pepper Steak,STOVE,false,,
+Citrus Chicken and Vegetables,STOVE,false,,
+Colorful Stir-Fried Pork,STOVE,false,,
+Copycat Wendy's Salad,NO_COOK,false,SPRING|SUMMER,
+Deli Chicken,NO_COOK,false,,
+Fajita Steak Salad,GRILL,false,SPRING|SUMMER,grill + salad = summer
+Flaky Puff Crust Pizza,OVEN,true,,homemade pizza = weekend
+French Toast,STOVE,false,,
+Gilbert's Bratwurst,MICRO_WAVE,false,,
+Golden Harvest Pork Stew,SLOW_COOKER,false,WINTER|FALL|SPRING,already set — adding SLOW_COOKER
+Grilled Chicken Thighs,GRILL,false,SPRING|SUMMER|FALL,
+"Grilled Chicken Thighs, Sweet Potatoes, Asparagus",GRILL,false,SPRING|SUMMER,asparagus = spring
+"Grilled Chicken Thighs, Sweet Potatoes, Green beans",GRILL,false,SUMMER|FALL,green beans = summer/fall
+"Grilled Pork, Potatoes, and Green Beans",GRILL,false,SPRING|SUMMER|FALL,
+Grilled Sirloin Salad,GRILL,false,SPRING|SUMMER,
+Hamburgers,GRILL,false,SPRING|SUMMER|FALL,
+Hoisin Pork Stir-Fry,STOVE,false,,
+Honey Dijon Turkey and Cheese Paninis,INDOOR_GRILL,false,,
+King Arthur Diner Style Pancakes (Mix),STOVE,false,,
+Kung Pao Chicken,STOVE,false,,
+Left Overs,,false,,no method applies
+Meatloaf,OVEN,false,WINTER|FALL,already set — adding OVEN
+Orange Chicken,STOVE,false,,
+Oriental Pepper Steak,STOVE,false,,
+Oven-Roasted Root Vegetables,OVEN,false,WINTER|FALL|SPRING,already set — adding OVEN
+Pancakes,STOVE,true,,weekend breakfast
+Pan-Roasted Chicken and Vegetables,OVEN,false,,
+Pasta Delight,STOVE,false,,
+PB and J Banana Panini,INDOOR_GRILL,false,,
+Pizza,OVEN,true,,user confirmed weekend-only
+Polynesian Pineapple Chicken,STOVE,false,,pineapple = summery
+Pork Chops with Grapes,OVEN,false,FALL,grapes = fall; could also be STOVE
+Pork Chops with Rosemary - Wine Sauce,OVEN,false,WINTER|FALL|SPRING,already set — adding OVEN
+Pork with Apple and Parsnips,OVEN,false,WINTER|FALL|SPRING,already set — adding OVEN
+Rachel Paninis,INDOOR_GRILL,false,,
+Random Panini,INDOOR_GRILL,false,,
+Ribs,GRILL,true,SPRING|SUMMER|FALL,takes time = weekend; MN winter grilling unlikely
+Sandwiches,NO_COOK,false,,
+Santa Fe Skillet Chicken,STOVE,false,,
+Sausage and Vegetable Spaghetti,STOVE,false,,
+Scrambled Eggs and Hash Browns,STOVE,false,,
+Scrambled Eggs and Toast,STOVE,false,,
+Screamin' Sicilian Pizza - Holy Pepperoni,OVEN,false,,frozen pizza = easy weeknight
+Screamin' Sicilian Supreme Frozen Pizza,OVEN,false,,frozen pizza = easy weeknight
+Sherried Beef,OVEN,false,FALL|WINTER,
+Sloppy Joes,STOVE,false,,
+Smoky Roast Pork with Peaches and Plums,OVEN,false,SUMMER,already set — adding OVEN
+Snacks,NO_COOK,false,,
+Southwest Chicken and Black Bean Salad,NO_COOK,false,SPRING|SUMMER,
+Spaghetti,STOVE,false,,
+Spaghetti & garlic bread,STOVE|OVEN,false,,pasta on stove; garlic bread in oven
+Stir Fried Pork and Green Beans,STOVE,false,,
+Stir-Fried Pork and Pasta,STOVE,false,,
+Summer Garden Pasta,STOVE,false,SUMMER,name says it all
+Taco Cauliflower Rice Bowl,STOVE,false,,
+Tarragon Chicken,OVEN,false,SPRING|FALL|WINTER,already set — adding OVEN
+Toasted Cheese Sandwiches,STOVE,false,,
+Winter Squash and Apples,OVEN,false,FALL|WINTER,already set — note: removed SPRING (winter squash is fall/winter only)
+Zesty Steak Fajitas,STOVE,false,,
