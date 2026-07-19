@@ -185,7 +185,13 @@ function App() {
                         }} />
                     </TabPanel>
                     <TabPanel p={0} pt={2}>
-                        <RecipeList mealLibrary={mealLibrary} />
+                        <RecipeList
+                            mealLibrary={mealLibrary}
+                            onMealCreated={(meal) => setMealLibrary(prev =>
+                                [...prev, { id: meal.id, name: meal.name, recipeLink: null, notes: null, minTemp: null, maxTemp: null, seasons: [], sides: [] }]
+                                    .sort((a, b) => a.name.localeCompare(b.name))
+                            )}
+                        />
                     </TabPanel>
                     {currentUser.admin && (
                         <TabPanel p={0} pt={2}>

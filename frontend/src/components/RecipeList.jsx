@@ -107,7 +107,7 @@ function ScaleModal({ recipe, isOpen, onClose }) {
     );
 }
 
-function RecipeList({ mealLibrary }) {
+function RecipeList({ mealLibrary, onMealCreated }) {
     const [recipes, setRecipes] = useState([]);
     const [cookbooks, setCookbooks] = useState([]);
     const [search, setSearch] = useState('');
@@ -399,6 +399,7 @@ function RecipeList({ mealLibrary }) {
                 cookbooks={cookbooks}
                 onSaved={handleSaved}
                 onCookbookCreated={handleCookbookCreated}
+                onMealCreated={onMealCreated}
             />
             <ScaleModal
                 recipe={viewRecipe}

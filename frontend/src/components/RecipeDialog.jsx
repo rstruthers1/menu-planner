@@ -3,14 +3,25 @@ import {
     Alert, AlertDescription, AlertIcon, AlertTitle,
     Box, Button, Collapse, Divider, FormControl, FormHelperText, FormLabel, HStack, Input, Link,
     Modal, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalOverlay,
-    Select, Stack, Textarea, useToast,
+    Select, Stack, Text, Textarea, useToast,
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 import IngredientRows from './IngredientRows';
 
 const EMPTY = { name: '', servings: '', sourceUrl: '', instructions: '', ingredients: [], mealId: '', cookbookId: '' };
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, onCookbookCreated }) {
+function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function isSimilar(a, b) {
+    const al = a.toLowerCase().trim(), bl = b.toLowerCase().trim();
+    return al === bl || al.includes(bl) || bl.includes(al);
+}
+
+function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, onCookbookCreated, onMealCreated }) {
     const isEdit = !!editRecipe;
     const [form, setForm] = useState(EMPTY);
     const [addingCookbook, setAddingCookbook] = useState(false);
@@ -22,6 +33,11 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
     const [importUrl, setImportUrl] = useState('');
     const [importing, setImporting] = useState(false);
     const [importAlert, setImportAlert] = useState(null);
+    const [creatingMeal, setCreatingMeal] = useState(false);
+    const [mealWarning, setMealWarning] = useState(null);
+    const [justCreatedMeal, setJustCreatedMeal] = useState(null);
+    const [planDate, setPlanDate] = useState('');
+    const [planSaving, setPlanSaving] = useState(false);
     const toast = useToast();
 
     useEffect(() => {
@@ -32,6 +48,11 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
         setBulkText('');
         setImportUrl('');
         setImportAlert(null);
+        setCreatingMeal(false);
+        setMealWarning(null);
+        setJustCreatedMeal(null);
+        setPlanDate('');
+        setPlanSaving(false);
         if (isEdit) {
             setForm({
                 name: editRecipe.name || '',
@@ -73,6 +94,74 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
             toast({ title: 'Could not create cookbook', status: 'error', duration: 3000, isClosable: true });
         } finally {
             setSavingCookbook(false);
+        }
+    };
+
+    const handleCreateAsMeal = async (force = false) => {
+        if (!form.name.trim()) return;
+        if (!force) {
+            const similar = meals.find(m => isSimilar(m.name, form.name.trim()));
+            if (similar) {
+                setMealWarning(`A meal named "${similar.name}" already exists.`);
+                return;
+            }
+        }
+        setMealWarning(null);
+        setCreatingMeal(true);
+        try {
+            const r = await authFetch('/api/meals', {
+                method: 'POST',
+                body: JSON.stringify({ name: form.name.trim() }),
+            });
+            if (!r.ok) {
+                const text = await r.text().catch(() => '');
+                let msg = text;
+                try { msg = JSON.parse(text).message || text; } catch { /* raw */ }
+                toast({ title: 'Could not create meal', description: msg, status: 'error', duration: 4000, isClosable: true });
+                return;
+            }
+            const created = await r.json();
+            onMealCreated(created);
+            setForm(f => ({ ...f, mealId: String(created.id) }));
+            setJustCreatedMeal(created);
+            setPlanDate(todayStr());
+        } catch {
+            toast({ title: 'Could not create meal', status: 'error', duration: 3000, isClosable: true });
+        } finally {
+            setCreatingMeal(false);
+        }
+    };
+
+    const handleAddToPlanner = async () => {
+        if (!planDate || !justCreatedMeal) return;
+        const d = new Date(planDate + 'T00:00:00');
+        const dayOfWeek = DAY_NAMES[d.getDay()];
+        const dateLabel = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+        setPlanSaving(true);
+        try {
+            const r = await authFetch('/api/menus', {
+                method: 'POST',
+                body: JSON.stringify({
+                    mealDate: planDate,
+                    dayOfWeek,
+                    mealName: justCreatedMeal.name,
+                    confirmed: false,
+                    leftover: false,
+                    leftoverFromDate: null,
+                    recipeLink: null,
+                    notes: null,
+                    minTemp: null,
+                    maxTemp: null,
+                    seasons: [],
+                }),
+            });
+            if (!r.ok) throw new Error();
+            toast({ title: `Added to planner for ${dateLabel}`, status: 'success', duration: 3000, isClosable: true });
+            setJustCreatedMeal(null);
+        } catch {
+            toast({ title: 'Failed to add to planner', status: 'error', duration: 3000, isClosable: true });
+        } finally {
+            setPlanSaving(false);
         }
     };
 
@@ -258,9 +347,22 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
                             </FormControl>
 
                             <FormControl>
-                                <FormLabel fontSize="sm">Linked meal — optional</FormLabel>
+                                <HStack justify="space-between" mb={1}>
+                                    <FormLabel fontSize="sm" mb={0}>Linked meal — optional</FormLabel>
+                                    {form.mealId === '' && form.name.trim() && !mealWarning && (
+                                        <Button
+                                            size="xs"
+                                            colorScheme="teal"
+                                            variant="outline"
+                                            isLoading={creatingMeal}
+                                            onClick={() => handleCreateAsMeal(false)}
+                                        >
+                                            + Create as meal
+                                        </Button>
+                                    )}
+                                </HStack>
                                 <FormHelperText fontSize="xs" mt={0} mb={2}>
-                                    Associate this recipe with a meal in your library.
+                                    Links this recipe to a meal so it appears in the planner.
                                 </FormHelperText>
                                 <Select
                                     name="mealId"
@@ -273,6 +375,41 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
                                         <option key={m.id} value={m.id}>{m.name}</option>
                                     ))}
                                 </Select>
+
+                                {mealWarning && (
+                                    <Box mt={2} p={2} bg="orange.50" borderRadius="md">
+                                        <Text fontSize="xs" color="orange.700" mb={2}>{mealWarning}</Text>
+                                        <HStack spacing={2}>
+                                            <Button size="xs" colorScheme="orange" isLoading={creatingMeal}
+                                                onClick={() => handleCreateAsMeal(true)}>Create anyway</Button>
+                                            <Button size="xs" variant="ghost" onClick={() => setMealWarning(null)}>Cancel</Button>
+                                        </HStack>
+                                    </Box>
+                                )}
+
+                                {justCreatedMeal && (
+                                    <Box mt={3} p={3} bg="teal.50" borderRadius="md">
+                                        <Text fontSize="xs" color="teal.700" fontWeight="medium" mb={2}>
+                                            ✓ "{justCreatedMeal.name}" added to meal library
+                                        </Text>
+                                        <Text fontSize="xs" color="teal.600" mb={2}>Add to planner?</Text>
+                                        <HStack>
+                                            <Input
+                                                type="date"
+                                                size="sm"
+                                                value={planDate}
+                                                onChange={e => setPlanDate(e.target.value)}
+                                            />
+                                            <Button size="sm" colorScheme="teal" isLoading={planSaving}
+                                                isDisabled={!planDate} onClick={handleAddToPlanner}>
+                                                Add
+                                            </Button>
+                                            <Button size="sm" variant="ghost" onClick={() => setJustCreatedMeal(null)}>
+                                                Skip
+                                            </Button>
+                                        </HStack>
+                                    </Box>
+                                )}
                             </FormControl>
 
                             <FormControl>
