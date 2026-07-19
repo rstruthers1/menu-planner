@@ -163,12 +163,17 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
             const leftoverNote = entry?.leftover ? ' <span style="color:#999;font-size:11px">(leftovers)</span>' : '';
             const confirmed = entry && !entry.confirmed ? ' <span style="color:#aaa;font-size:11px">idea</span>' : '';
             const cookbookNote = entry?.cookbookName ? `<br><span style="color:#888;font-size:11px">${entry.cookbookName}</span>` : '';
+            const recipeUrl = entry?.recipeLink || entry?.recipeSourceUrl;
+            const recipeDomainStr = recipeUrl ? (() => { try { return new URL(recipeUrl).hostname.replace(/^www\./, ''); } catch { return null; } })() : null;
+            const recipeNote = !entry?.cookbookName && recipeDomainStr
+                ? `<br><a href="${recipeUrl}" style="color:#3182ce;font-size:11px;text-decoration:none">${recipeDomainStr} ↗</a>`
+                : '';
             const weatherStr = w
                 ? `${icon(w.condition)} ${w.condition || ''} ${w.high !== undefined ? `${w.high}°/${w.low}°` : ''}`.trim()
                 : '—';
             return `<tr>
                 <td><strong>${dayName}</strong><br><span style="color:#888;font-size:11px">${dateLabel}</span></td>
-                <td>${meal}${leftoverNote}${confirmed}${cookbookNote}</td>
+                <td>${meal}${leftoverNote}${confirmed}${cookbookNote}${recipeNote}</td>
                 <td style="white-space:nowrap">${weatherStr}</td>
             </tr>`;
         }).join('');

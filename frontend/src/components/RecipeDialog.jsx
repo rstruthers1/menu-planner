@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
-    Box, Button, Collapse, FormControl, FormHelperText, FormLabel, HStack, Input, Link,
+    Alert, AlertDescription, AlertIcon, AlertTitle,
+    Box, Button, Collapse, Divider, FormControl, FormHelperText, FormLabel, HStack, Input, Link,
     Modal, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalOverlay,
     Select, Stack, Textarea, useToast,
 } from '@chakra-ui/react';
@@ -18,6 +19,9 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
     const [loading, setLoading] = useState(false);
     const [showBulk, setShowBulk] = useState(false);
     const [bulkText, setBulkText] = useState('');
+    const [importUrl, setImportUrl] = useState('');
+    const [importing, setImporting] = useState(false);
+    const [importAlert, setImportAlert] = useState(null);
     const toast = useToast();
 
     useEffect(() => {
@@ -26,6 +30,8 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
         setNewCookbookName('');
         setShowBulk(false);
         setBulkText('');
+        setImportUrl('');
+        setImportAlert(null);
         if (isEdit) {
             setForm({
                 name: editRecipe.name || '',
@@ -67,6 +73,37 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
             toast({ title: 'Could not create cookbook', status: 'error', duration: 3000, isClosable: true });
         } finally {
             setSavingCookbook(false);
+        }
+    };
+
+    const handleImport = async () => {
+        if (!importUrl.trim()) return;
+        setImporting(true);
+        setImportAlert(null);
+        try {
+            const r = await authFetch(`/api/recipes/import?url=${encodeURIComponent(importUrl.trim())}`);
+            const data = await r.json();
+            if (!r.ok) {
+                setImportAlert({ status: 'error', message: data.message, suggestion: data.suggestion });
+                return;
+            }
+            setForm(f => ({
+                ...f,
+                name: data.name || f.name,
+                servings: data.servings != null ? String(data.servings) : f.servings,
+                sourceUrl: data.sourceUrl || importUrl.trim(),
+                instructions: data.instructions || f.instructions,
+                ingredients: data.ingredients || f.ingredients,
+            }));
+            if (data.warning) {
+                setImportAlert({ status: 'warning', message: data.warningMessage, suggestion: data.warningSuggestion });
+            } else {
+                setImportAlert({ status: 'success', message: 'Recipe imported — review the fields below and save when ready.' });
+            }
+        } catch {
+            setImportAlert({ status: 'error', message: 'Could not reach the server.', suggestion: 'Check your connection and try again.' });
+        } finally {
+            setImporting(false);
         }
     };
 
@@ -114,7 +151,47 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
                 <ModalCloseButton />
                 <form onSubmit={handleSubmit}>
                     <ModalBody>
-                        <Stack spacing={4}>
+                        <Box bg="blue.50" borderRadius="md" p={3} mb={4}>
+                            <FormLabel fontSize="sm" mb={2} color="blue.700">Import from URL — optional</FormLabel>
+                            <HStack>
+                                <Input
+                                    size="sm"
+                                    placeholder="https://somecookingsite.com/recipe/..."
+                                    value={importUrl}
+                                    onChange={e => { setImportUrl(e.target.value); setImportAlert(null); }}
+                                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleImport(); } }}
+                                    isDisabled={importing}
+                                    bg="white"
+                                />
+                                <Button
+                                    size="sm"
+                                    colorScheme="blue"
+                                    onClick={handleImport}
+                                    isLoading={importing}
+                                    isDisabled={!importUrl.trim()}
+                                    flexShrink={0}
+                                >
+                                    Import
+                                </Button>
+                            </HStack>
+                            {importAlert && (
+                                <Alert status={importAlert.status} borderRadius="md" mt={2} py={2} px={3}
+                                       flexDirection="column" alignItems="flex-start">
+                                    <HStack>
+                                        <AlertIcon />
+                                        <AlertTitle fontSize="sm">{importAlert.message}</AlertTitle>
+                                    </HStack>
+                                    {importAlert.suggestion && (
+                                        <AlertDescription fontSize="xs" ml={6} mt={1}>
+                                            {importAlert.suggestion}
+                                        </AlertDescription>
+                                    )}
+                                </Alert>
+                            )}
+                        </Box>
+                        <Divider mb={4} />
+
+                    <Stack spacing={4}>
                             <FormControl isRequired>
                                 <FormLabel>Recipe Name</FormLabel>
                                 <Input name="name" value={form.name} onChange={handleChange} autoFocus />
