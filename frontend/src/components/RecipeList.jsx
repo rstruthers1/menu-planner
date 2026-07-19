@@ -1,14 +1,31 @@
 import { useState, useEffect } from 'react';
 import {
-    Badge, Box, Button, Divider, HStack, Input, Link, Modal, ModalBody, ModalCloseButton,
-    ModalContent, ModalFooter, ModalHeader, ModalOverlay, Select, Tag, TagLabel, Text,
-    useDisclosure, useToast, VStack,
+    Alert, AlertDescription, AlertIcon, Badge, Box, Button, Divider, HStack, Input, Link,
+    Modal, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalOverlay,
+    Select, Tag, TagLabel, Text, useDisclosure, useToast, VStack,
 } from '@chakra-ui/react';
 import { authFetch, recipeDomain } from '../utils/api';
 import RecipeDialog from './RecipeDialog';
 import CookbookManager from './CookbookManager';
 
 const PAGE_SIZE = 15;
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function weekStartFor(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    d.setDate(d.getDate() - d.getDay());
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function isSimilar(a, b) {
+    const al = a.toLowerCase().trim(), bl = b.toLowerCase().trim();
+    return al === bl || al.includes(bl) || bl.includes(al);
+}
 
 function ScaleModal({ recipe, isOpen, onClose }) {
     const [target, setTarget] = useState('');
@@ -99,9 +116,15 @@ function RecipeList({ mealLibrary }) {
     const [editRecipe, setEditRecipe] = useState(null);
     const [viewRecipe, setViewRecipe] = useState(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+    const [planRecipe, setPlanRecipe] = useState(null);
+    const [planName, setPlanName] = useState('');
+    const [planDate, setPlanDate] = useState('');
+    const [planSaving, setPlanSaving] = useState(false);
+    const [planWarning, setPlanWarning] = useState(null);
     const { isOpen: isDialogOpen, onOpen: onDialogOpen, onClose: onDialogClose } = useDisclosure();
     const { isOpen: isScaleOpen, onOpen: onScaleOpen, onClose: onScaleClose } = useDisclosure();
     const { isOpen: isCookbookMgrOpen, onOpen: onCookbookMgrOpen, onClose: onCookbookMgrClose } = useDisclosure();
+    const { isOpen: isPlanOpen, onOpen: onPlanOpen, onClose: onPlanClose } = useDisclosure();
     const toast = useToast();
 
     useEffect(() => {
@@ -180,6 +203,67 @@ function RecipeList({ mealLibrary }) {
 
     const handleCookbookDeleted = (id) => {
         setCookbooks(prev => prev.filter(c => c.id !== id));
+    };
+
+    const openAddToPlanner = (recipe) => {
+        setPlanRecipe(recipe);
+        setPlanName(recipe.name);
+        setPlanDate(todayStr());
+        setPlanWarning(null);
+        onPlanOpen();
+    };
+
+    const doPost = async () => {
+        const d = new Date(planDate + 'T00:00:00');
+        const dayOfWeek = DAY_NAMES[d.getDay()];
+        const dateLabel = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+        const r = await authFetch('/api/menus', {
+            method: 'POST',
+            body: JSON.stringify({
+                mealDate: planDate,
+                dayOfWeek,
+                mealName: planName.trim(),
+                confirmed: false,
+                leftover: false,
+                leftoverFromDate: null,
+                recipeLink: null,
+                notes: null,
+                minTemp: null,
+                maxTemp: null,
+                seasons: [],
+            }),
+        });
+        if (!r.ok) throw new Error();
+        toast({ title: `Added to planner for ${dateLabel}`, status: 'success', duration: 3000, isClosable: true });
+        onPlanClose();
+    };
+
+    const handleAddToPlanner = async (force = false) => {
+        if (!planDate || !planName.trim()) return;
+        setPlanSaving(true);
+        try {
+            if (!force) {
+                const weekR = await authFetch(`/api/menus/week?start=${weekStartFor(planDate)}`);
+                const weekEntries = weekR.ok ? await weekR.json() : [];
+                const dateConflict = weekEntries.find(e => e.mealDate === planDate);
+                const nameConflict = !dateConflict && weekEntries.find(e => isSimilar(e.mealName, planName.trim()));
+                if (dateConflict) {
+                    const label = new Date(planDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+                    setPlanWarning(`There's already "${dateConflict.mealName}" planned for ${label}.`);
+                    return;
+                }
+                if (nameConflict) {
+                    const label = new Date(nameConflict.mealDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+                    setPlanWarning(`"${nameConflict.mealName}" is already on the menu for ${label}.`);
+                    return;
+                }
+            }
+            await doPost();
+        } catch {
+            toast({ title: 'Failed to add to planner', status: 'error', duration: 3000, isClosable: true });
+        } finally {
+            setPlanSaving(false);
+        }
     };
 
     return (
@@ -288,6 +372,7 @@ function RecipeList({ mealLibrary }) {
                                     </>
                                 ) : (
                                     <>
+                                        <Button size="xs" variant="ghost" colorScheme="green" onClick={() => openAddToPlanner(recipe)}>Plan</Button>
                                         <Button size="xs" variant="ghost" colorScheme="blue" onClick={() => handleEdit(recipe)}>Edit</Button>
                                         <Button size="xs" variant="ghost" colorScheme="red" onClick={() => setDeleteConfirmId(recipe.id)}>Delete</Button>
                                     </>
@@ -327,6 +412,72 @@ function RecipeList({ mealLibrary }) {
                 onCreated={handleCookbookCreated}
                 onDeleted={handleCookbookDeleted}
             />
+
+            <Modal isOpen={isPlanOpen} onClose={onPlanClose} size="sm">
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader fontSize="md">Add to planner</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody pb={4}>
+                        <VStack spacing={3} align="stretch">
+                            <Box>
+                                <Text fontSize="xs" color="gray.500" mb={1}>Meal name</Text>
+                                <Input
+                                    size="sm"
+                                    value={planName}
+                                    onChange={e => { setPlanName(e.target.value); setPlanWarning(null); }}
+                                    onKeyDown={e => { if (e.key === 'Enter' && !planWarning) handleAddToPlanner(); }}
+                                />
+                            </Box>
+                            <Box>
+                                <Text fontSize="xs" color="gray.500" mb={1}>Date</Text>
+                                <Input
+                                    type="date"
+                                    size="sm"
+                                    value={planDate}
+                                    onChange={e => { setPlanDate(e.target.value); setPlanWarning(null); }}
+                                />
+                            </Box>
+                            {planWarning && (
+                                <Alert status="warning" borderRadius="md" py={2}>
+                                    <AlertIcon boxSize="14px" />
+                                    <AlertDescription fontSize="xs">{planWarning}</AlertDescription>
+                                </Alert>
+                            )}
+                        </VStack>
+                    </ModalBody>
+                    <ModalFooter>
+                        {planWarning ? (
+                            <>
+                                <Button
+                                    colorScheme="green"
+                                    size="sm"
+                                    mr={2}
+                                    isLoading={planSaving}
+                                    onClick={() => handleAddToPlanner(true)}
+                                >
+                                    Add anyway
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => setPlanWarning(null)}>Pick different day</Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button
+                                    colorScheme="green"
+                                    size="sm"
+                                    mr={2}
+                                    isLoading={planSaving}
+                                    isDisabled={!planDate || !planName.trim()}
+                                    onClick={() => handleAddToPlanner(false)}
+                                >
+                                    Add to planner
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={onPlanClose}>Cancel</Button>
+                            </>
+                        )}
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
         </Box>
     );
 }
