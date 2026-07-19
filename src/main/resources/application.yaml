@@ -5,6 +5,9 @@ weather:
 anthropic:
   api-key: ${ANTHROPIC_API_KEY:}
 
+jina:
+  api-key: ${JINA_API_KEY:}
+
 jwt:
   secret: ${JWT_SECRET:please-change-this-in-production-must-be-32-plus-chars!!}
   expiration-days: 30
