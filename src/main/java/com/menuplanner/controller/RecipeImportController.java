@@ -218,9 +218,9 @@ public class RecipeImportController {
             if (servings != null) result.put("servings", servings);
         }
 
+        List<String> ingList = new ArrayList<>();
         JSONArray ingredients = recipeJson.optJSONArray("recipeIngredient");
         if (ingredients != null && !ingredients.isEmpty()) {
-            List<String> ingList = new ArrayList<>();
             for (int i = 0; i < ingredients.length(); i++) {
                 String ing = ingredients.optString(i, "").trim();
                 if (!ing.isEmpty()) ingList.add(ing);
@@ -233,6 +233,28 @@ public class RecipeImportController {
             String text = parseInstructions(instructions);
             if (!text.isEmpty()) result.put("instructions", text);
         }
+
+        // Build extendedData blob from whatever metadata the JSON-LD contains
+        JSONObject extended = new JSONObject();
+        copyStringIfPresent(recipeJson, "prepTime", extended);
+        copyStringIfPresent(recipeJson, "cookTime", extended);
+        copyStringIfPresent(recipeJson, "totalTime", extended);
+        copyStringIfPresent(recipeJson, "description", extended);
+        copyStringIfPresent(recipeJson, "recipeCategory", extended, "category");
+        copyStringIfPresent(recipeJson, "recipeCuisine", extended, "cuisine");
+        Object kw = recipeJson.opt("keywords");
+        if (kw instanceof String s && !s.isBlank()) {
+            extended.put("keywords", s.trim());
+        } else if (kw instanceof JSONArray arr && !arr.isEmpty()) {
+            extended.put("keywords", arr.join(",").replace("\"",""));
+        }
+        // Try to detect ingredient groups: first via header markers, then Claude
+        if (!ingList.isEmpty()) {
+            JSONArray groups = detectIngredientGroups(ingList);
+            if (groups == null) groups = tryDetectGroupsWithClaude(ingList);
+            if (groups != null) extended.put("ingredientGroups", groups);
+        }
+        if (!extended.isEmpty()) result.put("extendedData", extended.toString());
 
         boolean hasIngredients = result.containsKey("ingredients");
         boolean hasName = result.containsKey("name");
@@ -299,9 +321,20 @@ public class RecipeImportController {
                   "name": "Recipe name",
                   "servings": 4,
                   "ingredients": ["1 cup flour", "2 eggs"],
-                  "instructions": "Step 1...\\n\\nStep 2..."
+                  "ingredientGroups": [
+                    { "name": "Dressing", "items": ["1 tbsp olive oil"] },
+                    { "name": "Salad", "items": ["4 cups romaine"] }
+                  ],
+                  "instructions": "Step 1...\\n\\nStep 2...",
+                  "prepTime": "15 minutes",
+                  "cookTime": "30 minutes",
+                  "description": "Brief description of the dish"
                 }
-                Omit any field you cannot find. If there is no recipe on this page, return {}.
+                Rules:
+                - Omit any field you cannot find.
+                - Include ingredientGroups only if the recipe has distinct named sections (e.g. "For the sauce:", "Dressing:"). If all ingredients are one flat list, omit ingredientGroups.
+                - The "ingredients" field should always be the complete flat list regardless.
+                - If there is no recipe on this page, return {}.
 
                 Page text:
                 """ + pageText;
@@ -355,6 +388,15 @@ public class RecipeImportController {
         String instructions = json.optString("instructions", "").trim();
         if (!instructions.isEmpty()) result.put("instructions", instructions);
 
+        // Build extendedData from Claude's structured response
+        JSONObject extended = new JSONObject();
+        JSONArray groups = json.optJSONArray("ingredientGroups");
+        if (groups != null && !groups.isEmpty()) extended.put("ingredientGroups", groups);
+        copyStringIfPresent(json, "prepTime", extended);
+        copyStringIfPresent(json, "cookTime", extended);
+        copyStringIfPresent(json, "description", extended);
+        if (!extended.isEmpty()) result.put("extendedData", extended.toString());
+
         boolean hasName = result.containsKey("name");
         boolean hasIngredients = result.containsKey("ingredients");
 
@@ -367,6 +409,75 @@ public class RecipeImportController {
         }
 
         return result;
+    }
+
+    private JSONArray detectIngredientGroups(List<String> ingredients) {
+        boolean hasHeaders = ingredients.stream().anyMatch(ing -> ing.trim().endsWith(":"));
+        if (!hasHeaders) return null;
+
+        JSONArray groups = new JSONArray();
+        String currentName = null;
+        JSONArray currentItems = new JSONArray();
+
+        for (String ing : ingredients) {
+            String trimmed = ing.trim();
+            if (trimmed.endsWith(":")) {
+                if (currentItems.length() > 0) {
+                    JSONObject group = new JSONObject();
+                    group.put("name", currentName != null ? currentName : "Ingredients");
+                    group.put("items", currentItems);
+                    groups.put(group);
+                    currentItems = new JSONArray();
+                }
+                currentName = trimmed.substring(0, trimmed.length() - 1).trim();
+            } else {
+                currentItems.put(trimmed);
+            }
+        }
+        if (currentItems.length() > 0) {
+            JSONObject group = new JSONObject();
+            group.put("name", currentName != null ? currentName : "Ingredients");
+            group.put("items", currentItems);
+            groups.put(group);
+        }
+        return groups.length() > 1 ? groups : null;
+    }
+
+    private JSONArray tryDetectGroupsWithClaude(List<String> ingredients) {
+        if (anthropicApiKey == null || anthropicApiKey.isBlank()) return null;
+        String prompt = "Given this flat list of recipe ingredients, determine if they logically split into distinct named groups (e.g. 'Dressing', 'Salad', 'Marinade', 'Chicken'). "
+                + "Return ONLY valid JSON — an array of groups like: [{\"name\":\"Dressing\",\"items\":[\"1 tbsp oil\"]},{\"name\":\"Salad\",\"items\":[\"4 cups romaine\"]}]. "
+                + "If all ingredients belong to a single component, return []. No markdown, no explanation.\n\nIngredients:\n"
+                + String.join("\n", ingredients);
+        try {
+            AnthropicClient client = AnthropicOkHttpClient.builder().apiKey(anthropicApiKey).build();
+            Message response = client.messages().create(
+                    MessageCreateParams.builder()
+                            .model(Model.CLAUDE_HAIKU_4_5_20251001)
+                            .maxTokens(800)
+                            .addUserMessage(prompt)
+                            .build()
+            );
+            String raw = response.content().stream()
+                    .filter(ContentBlock::isText)
+                    .map(b -> b.asText().text())
+                    .findFirst().orElse("[]").trim();
+            if (raw.startsWith("```")) raw = raw.replaceAll("^```[a-z]*\\n?", "").replaceAll("```$", "").trim();
+            JSONArray arr = new JSONArray(raw);
+            return arr.length() > 1 ? arr : null;
+        } catch (Exception e) {
+            log.warn("Recipe import: group detection with Claude failed: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private void copyStringIfPresent(JSONObject src, String srcKey, JSONObject dest) {
+        copyStringIfPresent(src, srcKey, dest, srcKey);
+    }
+
+    private void copyStringIfPresent(JSONObject src, String srcKey, JSONObject dest, String destKey) {
+        String val = src.optString(srcKey, "").trim();
+        if (!val.isEmpty()) dest.put(destKey, val);
     }
 
     private JSONObject findRecipeInJson(String json) {

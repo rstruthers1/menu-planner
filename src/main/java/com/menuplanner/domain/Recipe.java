@@ -38,6 +38,9 @@ public class Recipe {
     @Column(columnDefinition = "text")
     private String instructions;
 
+    @Column(columnDefinition = "text")
+    private String extendedData;
+
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
     @ManyToMany(fetch = FetchType.LAZY)

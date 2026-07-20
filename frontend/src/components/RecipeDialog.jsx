@@ -8,7 +8,7 @@ import {
 import { authFetch } from '../utils/api';
 import IngredientRows from './IngredientRows';
 
-const EMPTY = { name: '', servings: '', sourceUrl: '', instructions: '', ingredients: [], mealId: '', cookbookId: '' };
+const EMPTY = { name: '', servings: '', sourceUrl: '', instructions: '', ingredients: [], mealId: '', cookbookId: '', extendedData: null };
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function todayStr() {
@@ -46,7 +46,7 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
         setNewCookbookName('');
         setShowBulk(false);
         setBulkText('');
-        setImportUrl('');
+        setImportUrl(isEdit && editRecipe.sourceUrl ? editRecipe.sourceUrl : '');
         setImportAlert(null);
         setCreatingMeal(false);
         setMealWarning(null);
@@ -62,6 +62,7 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
                 ingredients: editRecipe.ingredients || [],
                 mealId: editRecipe.mealId ?? '',
                 cookbookId: editRecipe.cookbookId ?? '',
+                extendedData: editRecipe.extendedData ?? null,
             });
         } else {
             setForm(EMPTY);
@@ -183,6 +184,7 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
                 sourceUrl: data.sourceUrl || importUrl.trim(),
                 instructions: data.instructions || f.instructions,
                 ingredients: data.ingredients || f.ingredients,
+                extendedData: data.extendedData ?? f.extendedData,
             }));
             if (data.warning) {
                 setImportAlert({ status: 'warning', message: data.warningMessage, suggestion: data.warningSuggestion });
@@ -213,6 +215,7 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
                     ingredients: form.ingredients.filter(i => i.trim()),
                     mealId: form.mealId !== '' ? Number(form.mealId) : null,
                     cookbookId: form.cookbookId !== '' ? Number(form.cookbookId) : null,
+                    extendedData: form.extendedData ?? null,
                 }),
             });
             if (!r.ok) {

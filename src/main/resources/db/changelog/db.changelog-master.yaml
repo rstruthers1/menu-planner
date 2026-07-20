@@ -23,3 +23,5 @@ databaseChangeLog:
       file: db/changelog/011-add-source-url-to-recipe.sql
   - include:
       file: db/changelog/012-add-cook-methods-weekend-only.sql
+  - include:
+      file: db/changelog/013-add-recipe-extended-data.sql

@@ -27,6 +27,110 @@ function isSimilar(a, b) {
     return al === bl || al.includes(bl) || bl.includes(al);
 }
 
+function formatDuration(val) {
+    if (!val) return null;
+    // Already human-readable (e.g. "15 minutes" from Claude)
+    if (!/^PT/i.test(val)) return val;
+    // ISO 8601 duration: PT15M, PT1H, PT1H30M
+    const h = val.match(/(\d+)H/i)?.[1];
+    const m = val.match(/(\d+)M/i)?.[1];
+    const parts = [];
+    if (h) parts.push(`${h} hr`);
+    if (m) parts.push(`${m} min`);
+    return parts.length ? parts.join(' ') : null;
+}
+
+function ExtendedDataPanel({ recipe }) {
+    const [show, setShow] = useState(false);
+    if (!recipe.extendedData) return null;
+    let data;
+    try { data = JSON.parse(recipe.extendedData); } catch { return null; }
+    if (!data || typeof data !== 'object') return null;
+
+    const prep = formatDuration(data.prepTime);
+    const cook = formatDuration(data.cookTime);
+    const total = formatDuration(data.totalTime);
+    const hasGroups = Array.isArray(data.ingredientGroups) && data.ingredientGroups.length > 0;
+    const hasTiming = prep || cook || total;
+    const flatIngredients = !hasGroups && recipe.ingredients?.length ? recipe.ingredients : null;
+    const hasAnything = data.description || hasTiming || hasGroups || flatIngredients || data.category || data.cuisine || data.keywords || recipe.instructions;
+    if (!hasAnything) return null;
+
+    return (
+        <Box mt={4}>
+            <Button size="xs" variant="outline" colorScheme="purple" onClick={() => setShow(s => !s)}>
+                {show ? 'Hide' : '✦ Extended data (experimental)'}
+            </Button>
+            {show && (
+                <Box mt={3} p={3} bg="purple.50" borderRadius="md">
+                    {data.description && (
+                        <Box mb={3}>
+                            <Text fontSize="xs" fontWeight="semibold" color="purple.700" mb={1}>Description</Text>
+                            <Text fontSize="xs" color="gray.700">{data.description}</Text>
+                        </Box>
+                    )}
+                    {hasTiming && (
+                        <Box mb={3}>
+                            <Text fontSize="xs" fontWeight="semibold" color="purple.700" mb={1}>Timing</Text>
+                            <HStack spacing={4}>
+                                {prep && <Text fontSize="xs" color="gray.700">Prep: {prep}</Text>}
+                                {cook && <Text fontSize="xs" color="gray.700">Cook: {cook}</Text>}
+                                {total && <Text fontSize="xs" color="gray.700">Total: {total}</Text>}
+                            </HStack>
+                        </Box>
+                    )}
+                    {(data.category || data.cuisine) && (
+                        <Box mb={3}>
+                            <HStack spacing={4}>
+                                {data.category && <Text fontSize="xs" color="gray.700">Category: {data.category}</Text>}
+                                {data.cuisine && <Text fontSize="xs" color="gray.700">Cuisine: {data.cuisine}</Text>}
+                            </HStack>
+                        </Box>
+                    )}
+                    {data.keywords && (
+                        <Box mb={3}>
+                            <Text fontSize="xs" color="gray.500">Keywords: {data.keywords}</Text>
+                        </Box>
+                    )}
+                    {hasGroups && (
+                        <Box mb={3}>
+                            <Text fontSize="xs" fontWeight="semibold" color="purple.700" mb={2}>Ingredient groups</Text>
+                            {data.ingredientGroups.map((g, i) => (
+                                <Box key={i} mb={2}>
+                                    <Text fontSize="xs" fontWeight="medium" color="gray.600" mb={1}>{g.name}</Text>
+                                    <VStack align="stretch" spacing={0}>
+                                        {(g.items || []).map((item, j) => (
+                                            <Text key={j} fontSize="xs" color="gray.700">• {item}</Text>
+                                        ))}
+                                    </VStack>
+                                </Box>
+                            ))}
+                        </Box>
+                    )}
+
+                    {flatIngredients && (
+                        <Box mb={3}>
+                            <Text fontSize="xs" fontWeight="semibold" color="purple.700" mb={1}>Ingredients</Text>
+                            <VStack align="stretch" spacing={0}>
+                                {flatIngredients.map((ing, i) => (
+                                    <Text key={i} fontSize="xs" color="gray.700">• {ing}</Text>
+                                ))}
+                            </VStack>
+                        </Box>
+                    )}
+
+                    {recipe.instructions && (
+                        <Box>
+                            <Text fontSize="xs" fontWeight="semibold" color="purple.700" mb={1}>Instructions</Text>
+                            <Text fontSize="xs" color="gray.700" whiteSpace="pre-wrap">{recipe.instructions}</Text>
+                        </Box>
+                    )}
+                </Box>
+            )}
+        </Box>
+    );
+}
+
 function ScaleModal({ recipe, isOpen, onClose }) {
     const [target, setTarget] = useState('');
     if (!recipe) return null;
@@ -101,6 +205,8 @@ function ScaleModal({ recipe, isOpen, onClose }) {
                     {!recipe.ingredients?.length && !recipe.instructions && (
                         <Text fontSize="sm" color="gray.400">No details added yet.</Text>
                     )}
+
+                    <ExtendedDataPanel recipe={recipe} />
                 </ModalBody>
             </ModalContent>
         </Modal>
