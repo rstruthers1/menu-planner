@@ -149,6 +149,21 @@ public class RecipeImportController {
         Map<String, Object> result = parseRecipeFromJsonLd(doc, url);
         if (result == null) {
             result = tryClaudeExtraction(doc, url);
+        } else if (!result.containsKey("ingredients")) {
+            // JSON-LD found name but no ingredients — try Claude to fill in the rest
+            Map<String, Object> claudeResult = tryClaudeExtraction(doc, url);
+            if (claudeResult != null && claudeResult.containsKey("ingredients")) {
+                result.put("ingredients", claudeResult.get("ingredients"));
+                result.remove("warning");
+                result.remove("warningMessage");
+                result.remove("warningSuggestion");
+                if (!result.containsKey("instructions") && claudeResult.containsKey("instructions")) {
+                    result.put("instructions", claudeResult.get("instructions"));
+                }
+                if (!result.containsKey("extendedData") && claudeResult.containsKey("extendedData")) {
+                    result.put("extendedData", claudeResult.get("extendedData"));
+                }
+            }
         }
         if (result == null) {
             throw new RecipeImportException("NO_RECIPE_DATA",
@@ -322,8 +337,8 @@ public class RecipeImportController {
                   "servings": 4,
                   "ingredients": ["1 cup flour", "2 eggs"],
                   "ingredientGroups": [
-                    { "name": "Dressing", "items": ["1 tbsp olive oil"] },
-                    { "name": "Salad", "items": ["4 cups romaine"] }
+                    { "name": "Dressing", "ingredients": ["1 tbsp olive oil"] },
+                    { "name": "Salad", "ingredients": ["4 cups romaine"] }
                   ],
                   "instructions": "Step 1...\\n\\nStep 2...",
                   "prepTime": "15 minutes",
@@ -425,7 +440,7 @@ public class RecipeImportController {
                 if (currentItems.length() > 0) {
                     JSONObject group = new JSONObject();
                     group.put("name", currentName != null ? currentName : "Ingredients");
-                    group.put("items", currentItems);
+                    group.put("ingredients", currentItems);
                     groups.put(group);
                     currentItems = new JSONArray();
                 }
@@ -446,7 +461,7 @@ public class RecipeImportController {
     private JSONArray tryDetectGroupsWithClaude(List<String> ingredients) {
         if (anthropicApiKey == null || anthropicApiKey.isBlank()) return null;
         String prompt = "Given this flat list of recipe ingredients, determine if they logically split into distinct named groups (e.g. 'Dressing', 'Salad', 'Marinade', 'Chicken'). "
-                + "Return ONLY valid JSON — an array of groups like: [{\"name\":\"Dressing\",\"items\":[\"1 tbsp oil\"]},{\"name\":\"Salad\",\"items\":[\"4 cups romaine\"]}]. "
+                + "Return ONLY valid JSON — an array of groups like: [{\"name\":\"Dressing\",\"ingredients\":[\"1 tbsp oil\"]},{\"name\":\"Salad\",\"ingredients\":[\"4 cups romaine\"]}]. "
                 + "If all ingredients belong to a single component, return []. No markdown, no explanation.\n\nIngredients:\n"
                 + String.join("\n", ingredients);
         try {

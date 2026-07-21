@@ -15,6 +15,9 @@ import java.util.Optional;
 @Repository
 public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     Optional<Recipe> findByMeal(Meal meal);
+
+    @Query("SELECT r FROM Recipe r LEFT JOIN FETCH r.ingredients WHERE r.meal = :meal")
+    Optional<Recipe> findByMealWithIngredients(@Param("meal") Meal meal);
     long countByCookbook(Cookbook cookbook);
 
     @Query("SELECT r FROM Recipe r LEFT JOIN r.meal m WHERE r.household = :household OR (m IS NOT NULL AND m.household = :household) ORDER BY r.name")

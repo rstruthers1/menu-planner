@@ -22,6 +22,15 @@ public interface MenuEntryRepository extends JpaRepository<MenuEntry, Long> {
     List<MenuEntry> findByMealDateAndHousehold(LocalDate date, Household household);
     Page<MenuEntry> findByMealDateLessThanEqualAndHousehold(LocalDate date, Household household, Pageable pageable);
 
+    @Query("SELECT DISTINCT e FROM MenuEntry e " +
+           "JOIN FETCH e.meal m " +
+           "LEFT JOIN FETCH m.recipe r " +
+           "LEFT JOIN FETCH r.ingredients " +
+           "WHERE e.mealDate BETWEEN :start AND :end AND e.household = :household")
+    List<MenuEntry> findByWeekWithRecipes(@Param("start") LocalDate start,
+                                          @Param("end") LocalDate end,
+                                          @Param("household") Household household);
+
     @Query("SELECT COUNT(e) FROM MenuEntry e WHERE e.mealDate > :date AND e.mealDate <= :today AND e.household.id = :householdId")
     long countEntriesNewerThan(@Param("date") LocalDate date, @Param("today") LocalDate today, @Param("householdId") Long householdId);
 }

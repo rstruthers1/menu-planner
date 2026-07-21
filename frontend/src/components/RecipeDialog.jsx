@@ -8,7 +8,12 @@ import {
 import { authFetch } from '../utils/api';
 import IngredientRows from './IngredientRows';
 
-const EMPTY = { name: '', servings: '', sourceUrl: '', instructions: '', ingredients: [], mealId: '', cookbookId: '', extendedData: null };
+const EMPTY = {
+    name: '', servings: '', sourceUrl: '', description: '', instructions: '',
+    groups: [{ name: '', ingredients: [] }],
+    mealId: '', cookbookId: '', extendedData: null,
+};
+
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function todayStr() {
@@ -21,6 +26,19 @@ function isSimilar(a, b) {
     return al === bl || al.includes(bl) || bl.includes(al);
 }
 
+function groupsFromData(extendedData, flatIngredients) {
+    try {
+        const ext = extendedData ? JSON.parse(extendedData) : null;
+        if (ext?.ingredientGroups?.length > 0) {
+            return ext.ingredientGroups.map(g => ({
+                name: g.name || '',
+                ingredients: g.ingredients || g.items || [],
+            }));
+        }
+    } catch {}
+    return [{ name: '', ingredients: flatIngredients || [] }];
+}
+
 function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, onCookbookCreated, onMealCreated }) {
     const isEdit = !!editRecipe;
     const [form, setForm] = useState(EMPTY);
@@ -28,7 +46,7 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
     const [newCookbookName, setNewCookbookName] = useState('');
     const [savingCookbook, setSavingCookbook] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [showBulk, setShowBulk] = useState(false);
+    const [bulkGroupIdx, setBulkGroupIdx] = useState(null);
     const [bulkText, setBulkText] = useState('');
     const [importUrl, setImportUrl] = useState('');
     const [importing, setImporting] = useState(false);
@@ -44,7 +62,7 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
         if (!isOpen) return;
         setAddingCookbook(false);
         setNewCookbookName('');
-        setShowBulk(false);
+        setBulkGroupIdx(null);
         setBulkText('');
         setImportUrl(isEdit && editRecipe.sourceUrl ? editRecipe.sourceUrl : '');
         setImportAlert(null);
@@ -54,12 +72,15 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
         setPlanDate('');
         setPlanSaving(false);
         if (isEdit) {
+            let desc = '';
+            try { desc = (editRecipe.extendedData ? JSON.parse(editRecipe.extendedData) : {}).description || ''; } catch {}
             setForm({
                 name: editRecipe.name || '',
                 servings: editRecipe.servings ?? '',
                 sourceUrl: editRecipe.sourceUrl || '',
+                description: desc,
                 instructions: editRecipe.instructions || '',
-                ingredients: editRecipe.ingredients || [],
+                groups: groupsFromData(editRecipe.extendedData, editRecipe.ingredients),
                 mealId: editRecipe.mealId ?? '',
                 cookbookId: editRecipe.cookbookId ?? '',
                 extendedData: editRecipe.extendedData ?? null,
@@ -70,6 +91,28 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
     }, [isOpen, editRecipe, isEdit]);
 
     const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+
+    const addGroup = () => setForm(f => ({ ...f, groups: [...f.groups, { name: '', ingredients: [] }] }));
+    const removeGroup = (gi) => setForm(f => ({ ...f, groups: f.groups.filter((_, i) => i !== gi) }));
+    const updateGroupName = (gi, name) => setForm(f => ({
+        ...f, groups: f.groups.map((g, i) => i === gi ? { ...g, name } : g),
+    }));
+    const updateGroupIngredients = (gi, ingredients) => setForm(f => ({
+        ...f, groups: f.groups.map((g, i) => i === gi ? { ...g, ingredients } : g),
+    }));
+
+    const applyBulk = (gi) => {
+        const lines = bulkText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        if (lines.length === 0) return;
+        setForm(f => ({
+            ...f,
+            groups: f.groups.map((g, i) => i === gi
+                ? { ...g, ingredients: [...g.ingredients, ...lines] }
+                : g),
+        }));
+        setBulkText('');
+        setBulkGroupIdx(null);
+    };
 
     const handleCreateCookbook = async () => {
         if (!newCookbookName.trim()) return;
@@ -177,13 +220,15 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
                 setImportAlert({ status: 'error', message: data.message, suggestion: data.suggestion });
                 return;
             }
+            const importedDesc = (() => { try { return (data.extendedData ? JSON.parse(data.extendedData) : {}).description || ''; } catch { return ''; } })();
             setForm(f => ({
                 ...f,
                 name: data.name || f.name,
                 servings: data.servings != null ? String(data.servings) : f.servings,
                 sourceUrl: data.sourceUrl || importUrl.trim(),
+                description: importedDesc || f.description,
                 instructions: data.instructions || f.instructions,
-                ingredients: data.ingredients || f.ingredients,
+                groups: groupsFromData(data.extendedData, data.ingredients),
                 extendedData: data.extendedData ?? f.extendedData,
             }));
             if (data.warning) {
@@ -203,6 +248,26 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
         if (!form.name.trim()) return;
         setLoading(true);
         try {
+            const flatIngredients = form.groups.flatMap(g => g.ingredients).filter(i => i.trim());
+            const hasGroups = form.groups.length >= 2 || form.groups.some(g => g.name.trim());
+            let newExtendedData = null;
+            try {
+                const extData = form.extendedData ? JSON.parse(form.extendedData) : {};
+                if (form.description.trim()) {
+                    extData.description = form.description.trim();
+                } else {
+                    delete extData.description;
+                }
+                if (hasGroups) {
+                    extData.ingredientGroups = form.groups
+                        .filter(g => g.ingredients.some(i => i.trim()))
+                        .map(g => ({ name: g.name.trim(), ingredients: g.ingredients.filter(i => i.trim()) }));
+                } else {
+                    delete extData.ingredientGroups;
+                }
+                newExtendedData = Object.keys(extData).length > 0 ? JSON.stringify(extData) : null;
+            } catch { newExtendedData = form.extendedData; }
+
             const url = isEdit ? `/api/recipes/${editRecipe.id}` : '/api/recipes';
             const method = isEdit ? 'PUT' : 'POST';
             const r = await authFetch(url, {
@@ -212,10 +277,10 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
                     servings: form.servings !== '' ? Number(form.servings) : null,
                     sourceUrl: form.sourceUrl.trim() || null,
                     instructions: form.instructions || null,
-                    ingredients: form.ingredients.filter(i => i.trim()),
+                    ingredients: flatIngredients,
                     mealId: form.mealId !== '' ? Number(form.mealId) : null,
                     cookbookId: form.cookbookId !== '' ? Number(form.cookbookId) : null,
-                    extendedData: form.extendedData ?? null,
+                    extendedData: newExtendedData,
                 }),
             });
             if (!r.ok) {
@@ -283,7 +348,7 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
                         </Box>
                         <Divider mb={4} />
 
-                    <Stack spacing={4}>
+                        <Stack spacing={4}>
                             <FormControl isRequired>
                                 <FormLabel>Recipe Name</FormLabel>
                                 <Input name="name" value={form.name} onChange={handleChange} autoFocus />
@@ -346,6 +411,19 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
                                     placeholder="e.g. 4"
                                     size="sm"
                                     w="120px"
+                                />
+                            </FormControl>
+
+                            <FormControl>
+                                <FormLabel fontSize="sm">Description — optional</FormLabel>
+                                <Textarea
+                                    name="description"
+                                    value={form.description}
+                                    onChange={handleChange}
+                                    placeholder="Brief description of the dish…"
+                                    rows={2}
+                                    resize="vertical"
+                                    size="sm"
                                 />
                             </FormControl>
 
@@ -416,52 +494,70 @@ function RecipeDialog({ isOpen, onClose, editRecipe, meals, cookbooks, onSaved, 
                             </FormControl>
 
                             <FormControl>
-                                <HStack justify="space-between" mb={1}>
-                                    <FormLabel fontSize="sm" mb={0}>Ingredients</FormLabel>
-                                    <Link
-                                        fontSize="xs"
-                                        color="purple.500"
-                                        cursor="pointer"
-                                        onClick={() => { setShowBulk(b => !b); setBulkText(''); }}
-                                    >
-                                        {showBulk ? 'Cancel paste' : 'Paste a list'}
-                                    </Link>
-                                </HStack>
-                                <Collapse in={showBulk} animateOpacity>
-                                    <Box mb={2}>
-                                        <Textarea
-                                            size="sm"
-                                            placeholder={"1 cup flour\n2 eggs\n1/2 tsp salt\n…"}
-                                            value={bulkText}
-                                            onChange={e => setBulkText(e.target.value)}
-                                            rows={5}
-                                            resize="vertical"
-                                            mb={2}
+                                <FormLabel fontSize="sm" mb={2}>Ingredients</FormLabel>
+                                {form.groups.map((group, gi) => (
+                                    <Box key={gi} mb={gi < form.groups.length - 1 ? 4 : 2}>
+                                        <HStack mb={1} spacing={2}>
+                                            <Input
+                                                size="xs"
+                                                variant="flushed"
+                                                placeholder={form.groups.length > 1 ? `Group ${gi + 1} name, e.g. For the sauce` : 'Section name — optional'}
+                                                value={group.name}
+                                                onChange={e => updateGroupName(gi, e.target.value)}
+                                                fontWeight={group.name ? 'medium' : 'normal'}
+                                                color={group.name ? 'gray.700' : 'gray.400'}
+                                            />
+                                            <Link
+                                                fontSize="xs"
+                                                color="purple.500"
+                                                cursor="pointer"
+                                                flexShrink={0}
+                                                onClick={() => {
+                                                    if (bulkGroupIdx === gi) { setBulkGroupIdx(null); setBulkText(''); }
+                                                    else { setBulkGroupIdx(gi); setBulkText(''); }
+                                                }}
+                                            >
+                                                {bulkGroupIdx === gi ? 'Cancel' : 'Paste list'}
+                                            </Link>
+                                            {form.groups.length > 1 && (
+                                                <Button size="xs" variant="ghost" colorScheme="red" flexShrink={0}
+                                                    onClick={() => { removeGroup(gi); if (bulkGroupIdx === gi) setBulkGroupIdx(null); }}
+                                                    px={1}>
+                                                    ×
+                                                </Button>
+                                            )}
+                                        </HStack>
+                                        <Collapse in={bulkGroupIdx === gi} animateOpacity>
+                                            <Box mb={2}>
+                                                <Textarea
+                                                    size="sm"
+                                                    placeholder={"1 cup flour\n2 eggs\n1/2 tsp salt\n…"}
+                                                    value={bulkText}
+                                                    onChange={e => setBulkText(e.target.value)}
+                                                    rows={4}
+                                                    resize="vertical"
+                                                    mb={2}
+                                                />
+                                                <Button
+                                                    size="xs"
+                                                    colorScheme="purple"
+                                                    onClick={() => applyBulk(gi)}
+                                                    isDisabled={!bulkText.trim()}
+                                                >
+                                                    Add {bulkText.split('\n').filter(l => l.trim()).length || ''} ingredients
+                                                </Button>
+                                            </Box>
+                                        </Collapse>
+                                        <IngredientRows
+                                            value={group.ingredients}
+                                            onChange={ings => updateGroupIngredients(gi, ings)}
+                                            suggestionsUrl="/api/ingredients"
                                         />
-                                        <Button
-                                            size="xs"
-                                            colorScheme="purple"
-                                            onClick={() => {
-                                                const lines = bulkText
-                                                    .split('\n')
-                                                    .map(l => l.trim())
-                                                    .filter(l => l.length > 0);
-                                                if (lines.length === 0) return;
-                                                setForm(f => ({ ...f, ingredients: [...f.ingredients, ...lines] }));
-                                                setBulkText('');
-                                                setShowBulk(false);
-                                            }}
-                                            isDisabled={!bulkText.trim()}
-                                        >
-                                            Add {bulkText.split('\n').filter(l => l.trim()).length || ''} ingredients
-                                        </Button>
                                     </Box>
-                                </Collapse>
-                                <IngredientRows
-                                    value={form.ingredients}
-                                    onChange={ings => setForm(f => ({ ...f, ingredients: ings }))}
-                                    suggestionsUrl="/api/ingredients"
-                                />
+                                ))}
+                                <Button size="xs" variant="outline" colorScheme="purple" mt={1} onClick={addGroup}>
+                                    + Add ingredient group
+                                </Button>
                             </FormControl>
 
                             <FormControl>

@@ -99,7 +99,7 @@ function ExtendedDataPanel({ recipe }) {
                                 <Box key={i} mb={2}>
                                     <Text fontSize="xs" fontWeight="medium" color="gray.600" mb={1}>{g.name}</Text>
                                     <VStack align="stretch" spacing={0}>
-                                        {(g.items || []).map((item, j) => (
+                                        {(g.ingredients || g.items || []).map((item, j) => (
                                             <Text key={j} fontSize="xs" color="gray.700">• {item}</Text>
                                         ))}
                                     </VStack>
