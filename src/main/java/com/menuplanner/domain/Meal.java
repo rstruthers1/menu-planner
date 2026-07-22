@@ -53,6 +53,16 @@ public class Meal {
     @ToString.Exclude
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
+            name = "meal_ingredient",
+            joinColumns = @JoinColumn(name = "meal_id"),
+            inverseJoinColumns = @JoinColumn(name = "ingredient_id")
+    )
+    private List<Ingredient> ingredients = new ArrayList<>();
+
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
             name = "meal_side",
             joinColumns = @JoinColumn(name = "meal_id"),
             inverseJoinColumns = @JoinColumn(name = "side_id")

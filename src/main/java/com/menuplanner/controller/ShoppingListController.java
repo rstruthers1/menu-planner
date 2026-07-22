@@ -76,7 +76,17 @@ public class ShoppingListController {
 
             Recipe recipe = recipeRepository.findByMeal(entry.getMeal()).orElse(null);
             if (recipe == null) {
-                mealsWithoutRecipe.add(mealName);
+                // No recipe — check if meal has its own ingredients
+                List<com.menuplanner.domain.Ingredient> mealIngs = entry.getMeal().getIngredients();
+                if (!mealIngs.isEmpty()) {
+                    for (var ing : mealIngs) {
+                        if (ing.getName() != null && !ing.getName().isBlank()) {
+                            items.add(new IngItem(ing.getName().trim(), mealName));
+                        }
+                    }
+                } else {
+                    mealsWithoutRecipe.add(mealName);
+                }
                 continue;
             }
             if (recipe.getIngredients().isEmpty()) {
@@ -172,10 +182,21 @@ public class ShoppingListController {
         String prompt = """
                 You are a grocery shopping assistant. Categorize this numbered ingredient list into standard grocery store sections.
 
-                Use these category names (pick the best fit for each ingredient):
-                Produce, Meat & Seafood, Dairy & Eggs, Bread & Bakery, Canned & Dry Goods, Frozen, Condiments & Sauces, Spices & Seasonings, Oils & Vinegars, Baking, Beverages, Other
+                Category definitions — use the BEST fit, and use "Other" only as a last resort:
+                - Produce: all fresh vegetables, fruits, herbs, and greens — including onions, green onions, scallions, garlic, potatoes, peppers, lettuce, apples, citrus, corn, ginger root, mandarin oranges, etc.
+                - Meat & Seafood: raw or cooked meat, poultry, fish, seafood
+                - Dairy & Eggs: milk, cheese, butter, yogurt, cream, eggs
+                - Bread & Bakery: bread, rolls, buns, tortillas, pastries
+                - Canned & Dry Goods: canned broth, canned tomatoes, rice, pasta, nuts, dried fruit, water chestnuts, canned beans
+                - Frozen: items sold in the freezer aisle
+                - Condiments & Sauces: soy sauce, hoisin, hot sauce, ketchup, mustard, peanut butter, salad dressing, vinaigrette, pomegranate juice (as condiment), chili sauce
+                - Spices & Seasonings: salt, pepper, dried spices, garlic powder, onion powder, ginger powder, seasoning blends, kosher salt
+                - Oils & Vinegars: cooking oils (olive oil, sesame oil, canola oil, peanut oil), vinegar (rice vinegar, white wine vinegar, balsamic)
+                - Baking: flour, sugar, baking powder, cornstarch, vanilla, cocoa, honey, maple syrup
+                - Beverages: drinks served as beverages
+                - Other: only for items that truly do not fit any category above
 
-                Return a JSON array. Each ingredient must appear exactly once.
+                Return a JSON array. Each ingredient must appear exactly once. Use the exact category names above.
 
                 Format:
                 [
@@ -221,7 +242,9 @@ public class ShoppingListController {
 
     private List<Map<String, Object>> buildCategories(JSONArray arr, List<IngItem> items) {
         Set<Integer> assigned = new HashSet<>();
-        List<Map<String, Object>> categories = new ArrayList<>();
+        // LinkedHashMap preserves Claude's category order before we re-sort by CATEGORY_ORDER;
+        // using it also naturally merges duplicate category names from Claude
+        Map<String, List<Integer>> byCategory = new LinkedHashMap<>();
 
         for (int i = 0; i < arr.length(); i++) {
             JSONObject catObj = arr.optJSONObject(i);
@@ -230,20 +253,25 @@ public class ShoppingListController {
             JSONArray indices = catObj.optJSONArray("indices");
             if (indices == null || indices.isEmpty()) continue;
 
-            List<Integer> idxList = new ArrayList<>();
+            List<Integer> catIdx = byCategory.computeIfAbsent(catName, k -> new ArrayList<>());
             for (int j = 0; j < indices.length(); j++) {
                 int idx = indices.optInt(j, 0) - 1; // 1-based → 0-based
-                if (idx >= 0 && idx < items.size()) {
+                if (idx >= 0 && idx < items.size() && !assigned.contains(idx)) {
                     assigned.add(idx);
-                    idxList.add(idx);
+                    catIdx.add(idx);
                 }
             }
-            if (!idxList.isEmpty()) {
-                Map<String, Object> cat = new LinkedHashMap<>();
-                cat.put("name", catName);
-                cat.put("items", toItemList(items, idxList));
-                categories.add(cat);
-            }
+        }
+
+        List<Map<String, Object>> categories = new ArrayList<>();
+        for (var entry : byCategory.entrySet()) {
+            if (entry.getValue().isEmpty()) continue;
+            List<Integer> idxList = entry.getValue();
+            idxList.sort(Comparator.comparing(idx -> ingredientSortKey(items.get(idx).ingredient())));
+            Map<String, Object> cat = new LinkedHashMap<>();
+            cat.put("name", entry.getKey());
+            cat.put("items", toItemList(items, idxList));
+            categories.add(cat);
         }
 
         // Any unassigned items go to Other
@@ -252,6 +280,7 @@ public class ShoppingListController {
             if (!assigned.contains(i)) unassignedIdx.add(i);
         }
         if (!unassignedIdx.isEmpty()) {
+            unassignedIdx.sort(Comparator.comparing(idx -> ingredientSortKey(items.get(idx).ingredient())));
             List<Map<String, Object>> unassignedItems = toItemList(items, unassignedIdx);
             categories.stream()
                     .filter(c -> "Other".equals(c.get("name")))
@@ -273,6 +302,28 @@ public class ShoppingListController {
         }));
 
         return categories;
+    }
+
+    private String ingredientSortKey(String ingredient) {
+        String s = ingredient.toLowerCase().trim();
+        // strip leading quantity: numbers, fractions, unicode fraction chars
+        s = s.replaceAll("^[\\d\\s/½¼¾⅓⅔⅛⅜⅝⅞]+", "").trim();
+        // strip leading unit word
+        s = s.replaceAll("^(cups?|tbsps?|tsps?|tablespoons?|teaspoons?|oz|lbs?|pounds?|grams?|g|kg|ml|liters?|cans?|pkgs?|packages?|bunches?|bunch|cloves?|inches?|slices?|pieces?|sticks?|stalks?|heads?|ears?|jars?)\\b\\s*", "").trim();
+        // strip leading common prep adjectives
+        s = s.replaceAll("^(diced|chopped|sliced|minced|grated|shredded|crushed|ground|fresh|dried|frozen|canned|cooked|raw|large|medium|small|whole)\\s+", "").trim();
+        // strip parentheticals and comma-clauses — these are prep notes, not the ingredient name
+        // e.g. "onion (finely diced)" → "onion", "onion, cut into slices" → "onion"
+        s = s.replaceAll("[,(].*$", "").trim();
+        // reverse word order so "gala apple" → "apple gala" and "green apple" → "apple green",
+        // keeping all varieties of the same ingredient adjacent
+        String[] words = s.split("\\s+");
+        StringBuilder reversed = new StringBuilder();
+        for (int i = words.length - 1; i >= 0; i--) {
+            if (!reversed.isEmpty()) reversed.append(' ');
+            reversed.append(words[i]);
+        }
+        return reversed.toString();
     }
 
     private List<Map<String, Object>> toItemList(List<IngItem> items, List<Integer> indices) {

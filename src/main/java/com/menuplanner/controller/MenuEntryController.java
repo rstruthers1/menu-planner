@@ -109,6 +109,8 @@ public class MenuEntryController {
                 : null;
         m.put("sides", sides);
         Recipe recipe = meal != null ? meal.getRecipe() : null;
+        m.put("mealIngredients", meal != null ? meal.getIngredients().stream()
+                .map(com.menuplanner.domain.Ingredient::getName).collect(Collectors.toList()) : List.of());
         m.put("recipeId", recipe != null ? recipe.getId() : null);
         m.put("recipeName", recipe != null ? recipe.getName() : null);
         m.put("recipeSourceUrl", recipe != null ? recipe.getSourceUrl() : null);

@@ -152,6 +152,32 @@ public class MealController {
         return Map.of("id", meal.getId(), "weekendOnly", meal.isWeekendOnly());
     }
 
+    @PatchMapping("/{id}/ingredients")
+    public Map<String, Object> updateIngredients(@PathVariable Long id,
+                                                  @RequestBody Map<String, List<String>> body,
+                                                  @AuthenticationPrincipal AppUserDetails userDetails) {
+        Meal meal = mealRepository.findByIdForHousehold(id, userDetails.getHousehold().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Meal not found"));
+        List<String> names = body.getOrDefault("ingredients", List.of());
+        List<Ingredient> ingredients = new ArrayList<>();
+        for (String name : names) {
+            if (name == null || name.isBlank()) continue;
+            String trimmed = name.trim();
+            Ingredient ing = ingredientRepository.findByNameIgnoreCaseAndHousehold(trimmed, userDetails.getHousehold())
+                    .or(() -> ingredientRepository.findByNameIgnoreCaseAndHouseholdIsNull(trimmed))
+                    .orElseGet(() -> {
+                        Ingredient newIng = new Ingredient();
+                        newIng.setName(trimmed);
+                        newIng.setHousehold(userDetails.getHousehold());
+                        return ingredientRepository.save(newIng);
+                    });
+            ingredients.add(ing);
+        }
+        meal.setIngredients(ingredients);
+        mealRepository.save(meal);
+        return Map.of("ingredients", ingredients.stream().map(Ingredient::getName).collect(Collectors.toList()));
+    }
+
     @PatchMapping("/{id}/cookbook")
     public Map<String, Object> linkCookbook(@PathVariable Long id,
                                              @RequestBody Map<String, Object> body,
@@ -335,6 +361,7 @@ public class MealController {
         } else {
             resp.put("recipe", null);
         }
+        resp.put("ingredients", m.getIngredients().stream().map(Ingredient::getName).collect(Collectors.toList()));
         resp.put("sides", m.getSides().stream().map(Side::getName).collect(Collectors.toList()));
         Cookbook cookbook = m.getCookbook();
         resp.put("cookbookId", cookbook != null ? cookbook.getId() : null);

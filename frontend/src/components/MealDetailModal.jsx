@@ -6,13 +6,14 @@ import {
     ModalFooter, ModalHeader, ModalOverlay, Select, Stack, Text, Textarea, useToast,
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
+import IngredientRows from './IngredientRows';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const EMPTY_FORM = {
     mealName: '', recipeLink: '', notes: '', confirmed: false, leftover: false,
     leftoverFromDate: '', shared: false, minTemp: '', maxTemp: '', seasons: [],
-    recipeId: null, cookbookId: '',
+    recipeId: null, cookbookId: '', mealIngredients: [],
 };
 
 function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSaved }) {
@@ -46,6 +47,7 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
                 seasons: entry.seasons || [],
                 recipeId: entry.recipeId ?? null,
                 cookbookId: entry.cookbookId != null ? String(entry.cookbookId) : '',
+                mealIngredients: entry.mealIngredients || [],
             }
             : EMPTY_FORM
         );
@@ -161,6 +163,23 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
                     } catch {
                         toast({ title: 'Could not link recipe', status: 'warning', duration: 3000, isClosable: true });
                     }
+                }
+
+                // Patch meal ingredients if changed
+                const originalIngs = (mode === 'edit' ? (entry?.mealIngredients || []) : []).filter(i => i.trim());
+                const newIngs = (form.mealIngredients || []).filter(i => i.trim());
+                const ingsChanged = JSON.stringify([...originalIngs].sort()) !== JSON.stringify([...newIngs].sort());
+                if (ingsChanged) {
+                    try {
+                        const pr = await authFetch(`/api/meals/${saved.mealId}/ingredients`, {
+                            method: 'PATCH',
+                            body: JSON.stringify({ ingredients: newIngs }),
+                        });
+                        if (pr.ok) {
+                            const linked = await pr.json();
+                            saved.mealIngredients = linked.ingredients || [];
+                        }
+                    } catch { /* non-fatal */ }
                 }
             }
 
@@ -300,6 +319,18 @@ function MealDetailModal({ isOpen, onClose, dateStr, dayName, entry, mode, onSav
                                     </Select>
                                 </FormControl>
                             )}
+
+                            <FormControl>
+                                <FormLabel fontSize="sm">Ingredients — optional</FormLabel>
+                                <Text fontSize="xs" color="gray.500" mb={2}>
+                                    For simple meals without a recipe. Used in the shopping list.
+                                </Text>
+                                <IngredientRows
+                                    value={form.mealIngredients}
+                                    onChange={val => setForm(f => ({ ...f, mealIngredients: val }))}
+                                    suggestionsUrl="/api/ingredients/search"
+                                />
+                            </FormControl>
 
                             <FormControl>
                                 <FormLabel>Recipe Link</FormLabel>
