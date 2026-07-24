@@ -9,6 +9,7 @@ import com.anthropic.models.messages.Model;
 import com.menuplanner.domain.MenuEntry;
 import com.menuplanner.domain.Recipe;
 import com.menuplanner.repository.MenuEntryRepository;
+import com.menuplanner.repository.PantryRepository;
 import com.menuplanner.repository.RecipeRepository;
 import com.menuplanner.security.AppUserDetails;
 import org.json.JSONArray;
@@ -24,6 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/shopping-list")
@@ -39,16 +41,20 @@ public class ShoppingListController {
 
     private final MenuEntryRepository menuEntryRepository;
     private final RecipeRepository recipeRepository;
+    private final PantryRepository pantryRepository;
 
     @Value("${anthropic.api-key:}")
     private String anthropicApiKey;
 
-    public ShoppingListController(MenuEntryRepository menuEntryRepository, RecipeRepository recipeRepository) {
+    public ShoppingListController(MenuEntryRepository menuEntryRepository,
+                                   RecipeRepository recipeRepository,
+                                   PantryRepository pantryRepository) {
         this.menuEntryRepository = menuEntryRepository;
         this.recipeRepository = recipeRepository;
+        this.pantryRepository = pantryRepository;
     }
 
-    record IngItem(String ingredient, String recipe) {}
+    record IngItem(String ingredient, String recipe, boolean pantryMatch) {}
 
     @GetMapping
     public Map<String, Object> getShoppingList(@RequestParam String start,
@@ -60,6 +66,13 @@ public class ShoppingListController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid date: " + start);
         }
         LocalDate endDate = startDate.plusDays(6);
+
+        // Load pantry once; build a normalized key set for matching
+        Set<String> pantryKeys = pantryRepository.findByHouseholdOrderByName(userDetails.getHousehold())
+                .stream()
+                .map(p -> normalize(p.getName()))
+                .filter(k -> !k.isBlank())
+                .collect(Collectors.toSet());
 
         List<MenuEntry> entries = menuEntryRepository.findByMealDateBetweenAndHousehold(
                 startDate, endDate, userDetails.getHousehold());
@@ -76,12 +89,12 @@ public class ShoppingListController {
 
             Recipe recipe = recipeRepository.findByMeal(entry.getMeal()).orElse(null);
             if (recipe == null) {
-                // No recipe — check if meal has its own ingredients
                 List<com.menuplanner.domain.Ingredient> mealIngs = entry.getMeal().getIngredients();
                 if (!mealIngs.isEmpty()) {
                     for (var ing : mealIngs) {
                         if (ing.getName() != null && !ing.getName().isBlank()) {
-                            items.add(new IngItem(ing.getName().trim(), mealName));
+                            String name = ing.getName().trim();
+                            items.add(new IngItem(name, mealName, matchesPantry(name, pantryKeys)));
                         }
                     }
                 } else {
@@ -95,14 +108,14 @@ public class ShoppingListController {
             }
             for (var ing : recipe.getIngredients()) {
                 if (ing.getName() != null && !ing.getName().isBlank()) {
-                    items.add(new IngItem(ing.getName().trim(), mealName));
+                    String name = ing.getName().trim();
+                    items.add(new IngItem(name, mealName, matchesPantry(name, pantryKeys)));
                 }
             }
         }
 
-        // For meals with no recipe, try guessing ingredients from the meal name
         if (!mealsWithoutRecipe.isEmpty()) {
-            List<IngItem> guessed = guessIngredientsFromNames(mealsWithoutRecipe);
+            List<IngItem> guessed = guessIngredientsFromNames(mealsWithoutRecipe, pantryKeys);
             if (!guessed.isEmpty()) {
                 items.addAll(guessed);
                 guessedMeals.addAll(mealsWithoutRecipe);
@@ -129,7 +142,43 @@ public class ShoppingListController {
         return result;
     }
 
-    private List<IngItem> guessIngredientsFromNames(List<String> mealNames) {
+    // Normalize an ingredient string to its base noun phrase for pantry matching and sort keys.
+    // Strips leading quantities, units, prep adjectives, and trailing parentheticals/comma-clauses.
+    private String normalize(String ingredient) {
+        String s = ingredient.toLowerCase().trim();
+        s = s.replaceAll("^[\\d\\s/½¼¾⅓⅔⅛⅜⅝⅞]+", "").trim();
+        s = s.replaceAll("^(cups?|tbsps?|tsps?|tablespoons?|teaspoons?|oz|lbs?|pounds?|grams?|g|kg|ml|liters?|cans?|pkgs?|packages?|bunches?|bunch|cloves?|inches?|slices?|pieces?|sticks?|stalks?|heads?|ears?|jars?)\\b\\s*", "").trim();
+        s = s.replaceAll("^(diced|chopped|sliced|minced|grated|shredded|crushed|ground|fresh|dried|frozen|canned|cooked|raw|large|medium|small|whole)\\s+", "").trim();
+        s = s.replaceAll("[,(].*$", "").trim();
+        return s;
+    }
+
+    private String ingredientSortKey(String ingredient) {
+        String s = normalize(ingredient);
+        String[] words = s.split("\\s+");
+        StringBuilder reversed = new StringBuilder();
+        for (int i = words.length - 1; i >= 0; i--) {
+            if (!reversed.isEmpty()) reversed.append(' ');
+            reversed.append(words[i]);
+        }
+        return reversed.toString();
+    }
+
+    // Check if a normalized pantry key appears as a word-boundary match within the ingredient.
+    private boolean matchesPantry(String ingredient, Set<String> pantryKeys) {
+        if (pantryKeys.isEmpty()) return false;
+        String key = normalize(ingredient);
+        for (String pk : pantryKeys) {
+            if (pk.isBlank()) continue;
+            if (key.equals(pk)) return true;
+            if (key.startsWith(pk + " ")) return true;
+            if (key.endsWith(" " + pk)) return true;
+            if (key.contains(" " + pk + " ")) return true;
+        }
+        return false;
+    }
+
+    private List<IngItem> guessIngredientsFromNames(List<String> mealNames, Set<String> pantryKeys) {
         if (anthropicApiKey == null || anthropicApiKey.isBlank()) return List.of();
         StringBuilder sb = new StringBuilder();
         for (String name : mealNames) sb.append("- ").append(name).append("\n");
@@ -163,7 +212,7 @@ public class ShoppingListController {
                 if (ings == null || meal.isEmpty()) continue;
                 for (int j = 0; j < ings.length(); j++) {
                     String ing = ings.optString(j, "").trim();
-                    if (!ing.isEmpty()) result.add(new IngItem(ing, meal));
+                    if (!ing.isEmpty()) result.add(new IngItem(ing, meal, matchesPantry(ing, pantryKeys)));
                 }
             }
             return result;
@@ -230,7 +279,6 @@ public class ShoppingListController {
             return buildCategories(new JSONArray(raw), items);
         } catch (Exception e) {
             log.warn("Shopping list: Claude categorization failed: {}", e.getMessage());
-            // Fallback: single uncategorized list
             List<Map<String, Object>> fallback = new ArrayList<>();
             Map<String, Object> cat = new LinkedHashMap<>();
             cat.put("name", "All Ingredients");
@@ -242,8 +290,6 @@ public class ShoppingListController {
 
     private List<Map<String, Object>> buildCategories(JSONArray arr, List<IngItem> items) {
         Set<Integer> assigned = new HashSet<>();
-        // LinkedHashMap preserves Claude's category order before we re-sort by CATEGORY_ORDER;
-        // using it also naturally merges duplicate category names from Claude
         Map<String, List<Integer>> byCategory = new LinkedHashMap<>();
 
         for (int i = 0; i < arr.length(); i++) {
@@ -255,7 +301,7 @@ public class ShoppingListController {
 
             List<Integer> catIdx = byCategory.computeIfAbsent(catName, k -> new ArrayList<>());
             for (int j = 0; j < indices.length(); j++) {
-                int idx = indices.optInt(j, 0) - 1; // 1-based → 0-based
+                int idx = indices.optInt(j, 0) - 1;
                 if (idx >= 0 && idx < items.size() && !assigned.contains(idx)) {
                     assigned.add(idx);
                     catIdx.add(idx);
@@ -274,7 +320,6 @@ public class ShoppingListController {
             categories.add(cat);
         }
 
-        // Any unassigned items go to Other
         List<Integer> unassignedIdx = new ArrayList<>();
         for (int i = 0; i < items.size(); i++) {
             if (!assigned.contains(i)) unassignedIdx.add(i);
@@ -304,35 +349,15 @@ public class ShoppingListController {
         return categories;
     }
 
-    private String ingredientSortKey(String ingredient) {
-        String s = ingredient.toLowerCase().trim();
-        // strip leading quantity: numbers, fractions, unicode fraction chars
-        s = s.replaceAll("^[\\d\\s/½¼¾⅓⅔⅛⅜⅝⅞]+", "").trim();
-        // strip leading unit word
-        s = s.replaceAll("^(cups?|tbsps?|tsps?|tablespoons?|teaspoons?|oz|lbs?|pounds?|grams?|g|kg|ml|liters?|cans?|pkgs?|packages?|bunches?|bunch|cloves?|inches?|slices?|pieces?|sticks?|stalks?|heads?|ears?|jars?)\\b\\s*", "").trim();
-        // strip leading common prep adjectives
-        s = s.replaceAll("^(diced|chopped|sliced|minced|grated|shredded|crushed|ground|fresh|dried|frozen|canned|cooked|raw|large|medium|small|whole)\\s+", "").trim();
-        // strip parentheticals and comma-clauses — these are prep notes, not the ingredient name
-        // e.g. "onion (finely diced)" → "onion", "onion, cut into slices" → "onion"
-        s = s.replaceAll("[,(].*$", "").trim();
-        // reverse word order so "gala apple" → "apple gala" and "green apple" → "apple green",
-        // keeping all varieties of the same ingredient adjacent
-        String[] words = s.split("\\s+");
-        StringBuilder reversed = new StringBuilder();
-        for (int i = words.length - 1; i >= 0; i--) {
-            if (!reversed.isEmpty()) reversed.append(' ');
-            reversed.append(words[i]);
-        }
-        return reversed.toString();
-    }
-
     private List<Map<String, Object>> toItemList(List<IngItem> items, List<Integer> indices) {
         List<Map<String, Object>> result = new ArrayList<>();
         Iterable<Integer> iter = indices != null ? indices : range(items.size());
         for (int idx : iter) {
+            IngItem item = items.get(idx);
             Map<String, Object> m = new LinkedHashMap<>();
-            m.put("ingredient", items.get(idx).ingredient());
-            m.put("recipe", items.get(idx).recipe());
+            m.put("ingredient", item.ingredient());
+            m.put("recipe", item.recipe());
+            m.put("pantryMatch", item.pantryMatch());
             result.add(m);
         }
         return result;

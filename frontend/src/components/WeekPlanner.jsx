@@ -9,6 +9,7 @@ import AiChatModal from './AiChatModal';
 import CandidateTray from './CandidateTray';
 import DayRow from './DayRow';
 import MealDetailModal from './MealDetailModal';
+import PantryModal from './PantryModal';
 import ShoppingListModal from './ShoppingListModal';
 import WeekHelper from './WeekHelper';
 import SuggestPanel from './SuggestPanel';
@@ -37,6 +38,7 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
     const { isOpen: isAlertOpen, onOpen: onAlertOpen, onClose: onAlertClose } = useDisclosure();
     const { isOpen: isAddMealOpen, onOpen: onAddMealOpen, onClose: onAddMealClose } = useDisclosure();
     const { isOpen: isShoppingOpen, onOpen: onShoppingOpen, onClose: onShoppingClose } = useDisclosure();
+    const { isOpen: isPantryOpen, onOpen: onPantryOpen, onClose: onPantryClose } = useDisclosure();
     const cancelRef = useRef();
 
     useEffect(() => {
@@ -325,6 +327,9 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
                 <Button size="xs" variant="ghost" colorScheme="teal" onClick={onShoppingOpen}>
                     Shopping list
                 </Button>
+                <Button size="xs" variant="ghost" colorScheme="orange" onClick={onPantryOpen}>
+                    Pantry
+                </Button>
                 <Button size="xs" variant="ghost" colorScheme="gray" onClick={handlePrint}>
                     Print week
                 </Button>
@@ -342,6 +347,7 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
             weekStart={weekStart}
             toDateStr={toDateStr}
         />
+        <PantryModal isOpen={isPantryOpen} onClose={onPantryClose} />
         <AddMealModal
             isOpen={isAddMealOpen}
             onClose={onAddMealClose}
