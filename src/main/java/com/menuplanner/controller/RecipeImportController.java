@@ -452,7 +452,7 @@ public class RecipeImportController {
         if (currentItems.length() > 0) {
             JSONObject group = new JSONObject();
             group.put("name", currentName != null ? currentName : "Ingredients");
-            group.put("items", currentItems);
+            group.put("ingredients", currentItems);
             groups.put(group);
         }
         return groups.length() > 1 ? groups : null;
@@ -460,16 +460,17 @@ public class RecipeImportController {
 
     private JSONArray tryDetectGroupsWithClaude(List<String> ingredients) {
         if (anthropicApiKey == null || anthropicApiKey.isBlank()) return null;
-        String prompt = "Given this flat list of recipe ingredients, determine if they logically split into distinct named groups (e.g. 'Dressing', 'Salad', 'Marinade', 'Chicken'). "
-                + "Return ONLY valid JSON — an array of groups like: [{\"name\":\"Dressing\",\"ingredients\":[\"1 tbsp oil\"]},{\"name\":\"Salad\",\"ingredients\":[\"4 cups romaine\"]}]. "
-                + "If all ingredients belong to a single component, return []. No markdown, no explanation.\n\nIngredients:\n"
+        String prompt = "Given this flat list of recipe ingredients, determine if they logically split into distinct named groups (e.g. 'Dressing', 'Salad', 'Marinade', 'Sauce'). "
+                + "Return ONLY valid JSON — an array of groups, each with 'name' and 'ingredients'. Every ingredient from the input MUST appear in exactly one group. "
+                + "Example: [{\"name\":\"Pasta Salad\",\"ingredients\":[\"12 oz rotini\",\"1 cup olives\"]},{\"name\":\"Dressing\",\"ingredients\":[\"1/3 cup olive oil\"]}]. "
+                + "If all ingredients clearly belong to a single component, return []. No markdown, no explanation.\n\nIngredients:\n"
                 + String.join("\n", ingredients);
         try {
             AnthropicClient client = AnthropicOkHttpClient.builder().apiKey(anthropicApiKey).build();
             Message response = client.messages().create(
                     MessageCreateParams.builder()
                             .model(Model.CLAUDE_HAIKU_4_5_20251001)
-                            .maxTokens(800)
+                            .maxTokens(2000)
                             .addUserMessage(prompt)
                             .build()
             );
