@@ -16,6 +16,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/pantry")
 public class PantryController {
 
+    private static final List<String> SECTIONS = List.of("refrigerator", "freezer", "cupboard");
+
     private final PantryRepository pantryRepository;
 
     public PantryController(PantryRepository pantryRepository) {
@@ -24,9 +26,16 @@ public class PantryController {
 
     @GetMapping
     public Map<String, Object> getPantry(@AuthenticationPrincipal AppUserDetails userDetails) {
-        List<String> items = pantryRepository.findByHouseholdOrderByName(userDetails.getHousehold())
-                .stream().map(PantryItem::getName).collect(Collectors.toList());
-        return Map.of("items", items);
+        List<PantryItem> all = pantryRepository.findByHouseholdOrderByName(userDetails.getHousehold());
+        Map<String, List<String>> bySec = all.stream()
+                .collect(Collectors.groupingBy(
+                        p -> p.getSection() != null ? p.getSection() : "cupboard",
+                        Collectors.mapping(PantryItem::getName, Collectors.toList())
+                ));
+        // Always include all sections even if empty
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        for (String sec : SECTIONS) result.put(sec, bySec.getOrDefault(sec, List.of()));
+        return result;
     }
 
     @PutMapping
@@ -35,16 +44,17 @@ public class PantryController {
                                           @AuthenticationPrincipal AppUserDetails userDetails) {
         Household household = userDetails.getHousehold();
         pantryRepository.deleteByHousehold(household);
-        List<String> names = body.getOrDefault("items", List.of());
-        for (String name : names) {
-            if (name == null || name.isBlank()) continue;
-            PantryItem item = new PantryItem();
-            item.setName(name.trim());
-            item.setHousehold(household);
-            pantryRepository.save(item);
+        for (String section : SECTIONS) {
+            List<String> names = body.getOrDefault(section, List.of());
+            for (String name : names) {
+                if (name == null || name.isBlank()) continue;
+                PantryItem item = new PantryItem();
+                item.setName(name.trim());
+                item.setSection(section);
+                item.setHousehold(household);
+                pantryRepository.save(item);
+            }
         }
-        List<String> saved = pantryRepository.findByHouseholdOrderByName(household)
-                .stream().map(PantryItem::getName).collect(Collectors.toList());
-        return Map.of("items", saved);
+        return getPantry(userDetails);
     }
 }

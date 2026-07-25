@@ -41,8 +41,7 @@ export default function ShoppingListModal({ isOpen, onClose, weekStart, toDateSt
     };
 
     const checkedCount = Object.values(checked).filter(Boolean).length;
-    const pantryCount = data?.categories?.reduce((sum, cat) => sum + cat.items.filter(i => i.pantryMatch).length, 0) ?? 0;
-    const totalCount = (data?.categories?.reduce((sum, cat) => sum + cat.items.length, 0) ?? 0) - pantryCount;
+    const totalCount = data?.categories?.reduce((sum, cat) => sum + cat.items.length, 0) ?? 0;
 
     const printList = () => {
         if (!data) return;
@@ -50,7 +49,7 @@ export default function ShoppingListModal({ isOpen, onClose, weekStart, toDateSt
         for (const cat of data.categories) {
             rows.push(`<h3>${cat.name}</h3>`);
             for (const item of cat.items)
-                rows.push(`<label class="item${item.pantryMatch ? ' have-it' : ''}"><input type="checkbox"${item.pantryMatch ? ' checked' : ''}> ${item.ingredient} <span class="recipe">(${item.recipe})</span>${item.pantryMatch ? ' <span class="have-it-tag">have it</span>' : ''}</label>`);
+                rows.push(`<label class="item"><input type="checkbox"> ${item.ingredient} <span class="recipe">(${item.recipe})</span>${item.pantryMatch ? ' <span class="pantry-tag">check pantry</span>' : ''}</label>`);
         }
         if (data.mealsWithoutIngredients?.length > 0) {
             rows.push('<h3>No Ingredients</h3>');
@@ -71,8 +70,7 @@ export default function ShoppingListModal({ isOpen, onClose, weekStart, toDateSt
             h3 { margin: 16px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: #555; border-bottom: 1px solid #ddd; padding-bottom: 2px; }
             label.item { display: block; margin: 4px 0; cursor: default; }
             label.item input { margin-right: 6px; }
-            label.have-it { opacity: 0.5; text-decoration: line-through; }
-            .have-it-tag { font-size: 10px; color: #276749; background: #c6f6d5; padding: 1px 5px; border-radius: 4px; margin-left: 6px; }
+            .pantry-tag { font-size: 10px; color: #744210; background: #feebc8; padding: 1px 5px; border-radius: 4px; margin-left: 6px; }
             .recipe { color: #999; font-size: 12px; }
             .note-item { margin: 3px 0 3px 20px; font-size: 13px; color: #666; }
             .note { font-size: 12px; color: #666; margin-top: 16px; }
@@ -87,7 +85,7 @@ export default function ShoppingListModal({ isOpen, onClose, weekStart, toDateSt
         for (const cat of data.categories) {
             lines.push(`[${cat.name}]`);
             for (const item of cat.items) {
-                lines.push(`  ${item.pantryMatch ? '✓ ' : ''}${item.ingredient} (${item.recipe})`);
+                lines.push(`  ${item.ingredient} (${item.recipe})${item.pantryMatch ? ' — check pantry' : ''}`);
             }
             lines.push('');
         }
@@ -142,15 +140,14 @@ export default function ShoppingListModal({ isOpen, onClose, weekStart, toDateSt
                                     <VStack align="stretch" spacing={1} pl={1}>
                                         {cat.items.map((item, idx) => {
                                             const key = `${cat.name}::${idx}::${item.ingredient}`;
-                                            const done = !!checked[key] || item.pantryMatch;
+                                            const done = !!checked[key];
                                             return (
                                                 <Checkbox
                                                     key={key}
                                                     isChecked={done}
-                                                    onChange={() => !item.pantryMatch && toggleItem(key)}
+                                                    onChange={() => toggleItem(key)}
                                                     size="sm"
                                                     alignItems="center"
-                                                    opacity={item.pantryMatch ? 0.5 : 1}
                                                 >
                                                     <Text
                                                         as="span"
@@ -164,8 +161,8 @@ export default function ShoppingListModal({ isOpen, onClose, weekStart, toDateSt
                                                         ({item.recipe})
                                                     </Text>
                                                     {item.pantryMatch && (
-                                                        <Tag size="sm" colorScheme="green" ml={2} fontSize="10px" px={1} py={0}>
-                                                            have it
+                                                        <Tag size="sm" colorScheme="orange" ml={2} fontSize="10px" px={1} py={0}>
+                                                            check pantry
                                                         </Tag>
                                                     )}
                                                 </Checkbox>

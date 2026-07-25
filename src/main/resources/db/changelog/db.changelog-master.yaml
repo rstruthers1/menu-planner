@@ -29,3 +29,5 @@ databaseChangeLog:
       file: db/changelog/014-add-meal-ingredient-table.sql
   - include:
       file: db/changelog/015-add-pantry-item-table.sql
+  - include:
+      file: db/changelog/016-add-pantry-section.sql

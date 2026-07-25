@@ -6,6 +6,7 @@ import WeekPlanner from './components/WeekPlanner';
 import History from './components/History';
 import MealLibrary from './components/MealLibrary';
 import RecipeList from './components/RecipeList';
+import PantryPage from './components/PantryPage';
 import AdminPanel from './components/AdminPanel';
 import Login from './components/Login';
 import { authFetch } from './utils/api';
@@ -126,6 +127,7 @@ function App() {
                     <Tab>History</Tab>
                     <Tab>Meal Library</Tab>
                     <Tab>Recipes</Tab>
+                    <Tab>Pantry</Tab>
                     {currentUser.admin && <Tab>Admin</Tab>}
                 </TabList>
                 <TabPanels>
@@ -192,6 +194,9 @@ function App() {
                                     .sort((a, b) => a.name.localeCompare(b.name))
                             )}
                         />
+                    </TabPanel>
+                    <TabPanel p={0} pt={2}>
+                        <PantryPage />
                     </TabPanel>
                     {currentUser.admin && (
                         <TabPanel p={0} pt={2}>

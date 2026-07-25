@@ -14,6 +14,9 @@ public class PantryItem {
 
     private String name;
 
+    @Column(length = 50)
+    private String section; // refrigerator | freezer | cupboard
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "household_id")
     private Household household;

@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import {
-    Button, FormHelperText, Modal, ModalBody, ModalCloseButton, ModalContent,
-    ModalFooter, ModalHeader, ModalOverlay, Text,
+    Button, Modal, ModalBody, ModalCloseButton, ModalContent,
+    ModalFooter, ModalHeader, ModalOverlay, Spinner, Text,
 } from '@chakra-ui/react';
 import { authFetch } from '../utils/api';
 import IngredientRows from './IngredientRows';
 
 export default function PantryModal({ isOpen, onClose }) {
     const [items, setItems] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -46,16 +46,17 @@ export default function PantryModal({ isOpen, onClose }) {
                     <Text fontSize="sm" color="gray.500" mb={3}>
                         Items listed here will be marked "have it" on the shopping list.
                     </Text>
-                    {!loading && (
-                        <IngredientRows
+                    {loading
+                        ? <Spinner size="sm" />
+                        : <IngredientRows
                             value={items}
                             onChange={setItems}
                             suggestionsUrl="/api/ingredients/search"
-                        />
-                    )}
-                    <FormHelperText mt={3} fontSize="xs">
+                          />
+                    }
+                    <Text fontSize="xs" color="gray.500" mt={3}>
                         Tip: use plain names like "eggs", "olive oil", "garlic" — no quantities needed.
-                    </FormHelperText>
+                    </Text>
                 </ModalBody>
                 <ModalFooter pt={2}>
                     <Button variant="ghost" mr={3} onClick={onClose}>Cancel</Button>
