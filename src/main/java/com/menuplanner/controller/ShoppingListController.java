@@ -263,7 +263,7 @@ public class ShoppingListController {
             Message response = client.messages().create(
                     MessageCreateParams.builder()
                             .model(Model.CLAUDE_HAIKU_4_5_20251001)
-                            .maxTokens(1000)
+                            .maxTokens(1500)
                             .addUserMessage(prompt)
                             .build()
             );
@@ -309,6 +309,14 @@ public class ShoppingListController {
             }
         }
 
+        // Items Claude didn't assign: keyword fallback before defaulting to Other
+        for (int i = 0; i < items.size(); i++) {
+            if (assigned.contains(i)) continue;
+            String guessed = guessCategory(items.get(i).ingredient());
+            byCategory.computeIfAbsent(guessed, k -> new ArrayList<>()).add(i);
+            assigned.add(i);
+        }
+
         List<Map<String, Object>> categories = new ArrayList<>();
         for (var entry : byCategory.entrySet()) {
             if (entry.getValue().isEmpty()) continue;
@@ -320,33 +328,65 @@ public class ShoppingListController {
             categories.add(cat);
         }
 
-        List<Integer> unassignedIdx = new ArrayList<>();
-        for (int i = 0; i < items.size(); i++) {
-            if (!assigned.contains(i)) unassignedIdx.add(i);
-        }
-        if (!unassignedIdx.isEmpty()) {
-            unassignedIdx.sort(Comparator.comparing(idx -> ingredientSortKey(items.get(idx).ingredient())));
-            List<Map<String, Object>> unassignedItems = toItemList(items, unassignedIdx);
-            categories.stream()
-                    .filter(c -> "Other".equals(c.get("name")))
-                    .findFirst()
-                    .ifPresentOrElse(
-                            c -> ((List<Map<String, Object>>) c.get("items")).addAll(unassignedItems),
-                            () -> {
-                                Map<String, Object> other = new LinkedHashMap<>();
-                                other.put("name", "Other");
-                                other.put("items", unassignedItems);
-                                categories.add(other);
-                            }
-                    );
-        }
-
         categories.sort(Comparator.comparingInt(c -> {
             int pos = CATEGORY_ORDER.indexOf(c.get("name"));
             return pos < 0 ? CATEGORY_ORDER.size() : pos;
         }));
 
         return categories;
+    }
+
+    private static final Map<String, String> KEYWORD_CATEGORIES;
+    static {
+        Map<String, String> m = new LinkedHashMap<>();
+        // Produce — vegetables
+        for (String k : List.of("potato", "potatoes", "sweet potato", "yam", "carrot", "carrots",
+                "onion", "onions", "green onion", "scallion", "leek", "shallot",
+                "garlic", "ginger", "ginger root",
+                "tomato", "tomatoes", "cherry tomato",
+                "pepper", "peppers", "bell pepper", "jalapeño", "serrano", "poblano",
+                "corn", "corn on the cob", "zucchini", "squash", "pumpkin", "eggplant",
+                "broccoli", "cauliflower", "asparagus", "artichoke", "celery",
+                "mushroom", "mushrooms", "beet", "beets", "radish", "turnip", "parsnip",
+                "cucumber", "avocado", "spinach", "kale", "lettuce", "romaine",
+                "cabbage", "bok choy", "arugula", "mixed greens",
+                // Produce — fruits
+                "apple", "apples", "pear", "orange", "lemon", "lime", "grapefruit",
+                "banana", "grape", "grapes", "strawberry", "blueberry", "raspberry",
+                "blackberry", "mango", "pineapple", "watermelon", "cantaloupe", "peach",
+                "plum", "cherry", "cherries", "kiwi", "mandarin", "clementine", "fig",
+                // Produce — herbs
+                "basil", "cilantro", "parsley", "mint", "thyme", "rosemary", "dill",
+                "chives", "sage", "oregano leaf")) {
+            m.put(k, "Produce");
+        }
+        // Meat & Seafood
+        for (String k : List.of("chicken", "beef", "pork", "steak", "turkey", "lamb",
+                "salmon", "tuna", "shrimp", "cod", "tilapia", "halibut", "crab", "lobster",
+                "bratwurst", "sausage", "bacon", "ham", "brats")) {
+            m.put(k, "Meat & Seafood");
+        }
+        // Dairy & Eggs
+        for (String k : List.of("milk", "butter", "cream", "egg", "eggs",
+                "cheese", "cheddar", "mozzarella", "parmesan", "ricotta", "yogurt")) {
+            m.put(k, "Dairy & Eggs");
+        }
+        // Bread & Bakery
+        for (String k : List.of("bread", "bun", "buns", "roll", "rolls", "tortilla",
+                "bagel", "pita", "naan")) {
+            m.put(k, "Bread & Bakery");
+        }
+        KEYWORD_CATEGORIES = Collections.unmodifiableMap(m);
+    }
+
+    private String guessCategory(String ingredient) {
+        String norm = normalize(ingredient);
+        // Direct match first, then check if norm contains a keyword
+        if (KEYWORD_CATEGORIES.containsKey(norm)) return KEYWORD_CATEGORIES.get(norm);
+        for (var entry : KEYWORD_CATEGORIES.entrySet()) {
+            if (norm.contains(entry.getKey())) return entry.getValue();
+        }
+        return "Other";
     }
 
     private List<Map<String, Object>> toItemList(List<IngItem> items, List<Integer> indices) {
