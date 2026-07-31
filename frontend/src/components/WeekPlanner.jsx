@@ -9,6 +9,7 @@ import AiChatModal from './AiChatModal';
 import CandidateTray from './CandidateTray';
 import DayRow from './DayRow';
 import MealDetailModal from './MealDetailModal';
+import RecipeViewModal from './RecipeViewModal';
 import ShoppingListModal from './ShoppingListModal';
 import WeekHelper from './WeekHelper';
 import SuggestPanel from './SuggestPanel';
@@ -29,6 +30,7 @@ function getSeason(dateStr) {
 function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, setMealLibrary, toDateStr }) {
     const mealSuggestions = [...new Set(mealLibrary.map(m => m.name))].sort();
     const [detailDay, setDetailDay] = useState(null);
+    const [viewRecipeId, setViewRecipeId] = useState(null);
     const [aiChatDay, setAiChatDay] = useState(null);
     const [candidates, setCandidates] = useState(() => {
         try { return JSON.parse(localStorage.getItem('candidateMeals') || '[]'); } catch { return []; }
@@ -307,6 +309,7 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
                     mealLibrary={mealLibrary}
                     onSave={handleSave}
                     onToggleConfirmed={handleToggleConfirmed}
+                    onViewRecipe={(id) => setViewRecipeId(id)}
                     onOpenDetail={(mode) => setDetailDay({ dateStr, dayName, entry: entriesByDate[dateStr], mode })}
                     onOpenAiChat={() => {
                         const existingMeals = {};
@@ -336,6 +339,11 @@ function WeekPlanner({ weekStart, entries, setEntries, weather, mealLibrary, set
             </HStack>
         </div>
         </DndContext>
+        <RecipeViewModal
+            recipeId={viewRecipeId}
+            isOpen={!!viewRecipeId}
+            onClose={() => setViewRecipeId(null)}
+        />
         <ShoppingListModal
             isOpen={isShoppingOpen}
             onClose={onShoppingClose}

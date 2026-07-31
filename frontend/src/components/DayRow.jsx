@@ -59,7 +59,7 @@ function getMealWarning(mealName, mealLibrary, weather, dateStr) {
     return null;
 }
 
-function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealLibrary, onSave, onOpenAiChat, onOpenDetail, onToggleConfirmed }) {
+function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealLibrary, onSave, onOpenAiChat, onOpenDetail, onToggleConfirmed, onViewRecipe }) {
     const [mealName, setMealName] = useState(entry?.mealName || '');
     const [pickerOpen, setPickerOpen] = useState(false);
     const [search, setSearch] = useState('');
@@ -185,7 +185,13 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealL
                         {entry.cookbookName}
                     </Text>
                 )}
-                {!entry?.cookbookName && (entry?.recipeLink || entry?.recipeSourceUrl) && (
+                {!entry?.cookbookName && entry?.recipeId && (
+                    <Link fontSize="xs" color="blue.400" lineHeight="1.2" mt="1px" display="block"
+                          cursor="pointer" onClick={() => onViewRecipe && onViewRecipe(entry.recipeId)}>
+                        View recipe
+                    </Link>
+                )}
+                {!entry?.cookbookName && !entry?.recipeId && (entry?.recipeLink || entry?.recipeSourceUrl) && (
                     <Link href={entry.recipeLink || entry.recipeSourceUrl} isExternal fontSize="xs" color="blue.400" lineHeight="1.2" mt="1px" display="block">
                         {recipeDomain(entry.recipeLink || entry.recipeSourceUrl) ?? 'Recipe'} ↗
                     </Link>

@@ -34,6 +34,14 @@ public class RecipeController {
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
+    @GetMapping("/{id}")
+    public Map<String, Object> getRecipe(@PathVariable Long id,
+                                         @AuthenticationPrincipal AppUserDetails userDetails) {
+        Recipe recipe = recipeRepository.findByIdForHousehold(id, userDetails.getHousehold().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recipe not found"));
+        return toResponse(recipe);
+    }
+
     @PostMapping
     public Map<String, Object> createRecipe(@RequestBody RecipeRequest req,
                                             @AuthenticationPrincipal AppUserDetails userDetails) {
