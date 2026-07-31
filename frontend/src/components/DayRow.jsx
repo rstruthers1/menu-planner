@@ -185,7 +185,7 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealL
                         {entry.cookbookName}
                     </Text>
                 )}
-                {!entry?.cookbookName && entry?.recipeId && (
+                {entry?.recipeId && (
                     <Link fontSize="xs" color="blue.400" lineHeight="1.2" mt="1px" display="block"
                           cursor="pointer" onClick={() => onViewRecipe && onViewRecipe(entry.recipeId)}>
                         View recipe
