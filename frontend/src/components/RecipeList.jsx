@@ -5,6 +5,7 @@ import {
     Select, Tag, TagLabel, Text, useDisclosure, useToast, VStack,
 } from '@chakra-ui/react';
 import { authFetch, recipeDomain } from '../utils/api';
+import { printRecipe } from '../utils/printRecipe';
 import RecipeDialog from './RecipeDialog';
 import CookbookManager from './CookbookManager';
 
@@ -208,6 +209,12 @@ function ScaleModal({ recipe, isOpen, onClose }) {
 
                     <ExtendedDataPanel recipe={recipe} />
                 </ModalBody>
+                <ModalFooter pt={2}>
+                    <Button size="sm" variant="outline" onClick={() => printRecipe(recipe, { multiplier })}>
+                        Print
+                    </Button>
+                    <Button size="sm" ml={3} onClick={onClose}>Close</Button>
+                </ModalFooter>
             </ModalContent>
         </Modal>
     );

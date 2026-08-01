@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import {
-    Box, Divider, HStack, Link, Modal, ModalBody, ModalCloseButton,
-    ModalContent, ModalHeader, ModalOverlay, Spinner, Text, VStack,
+    Box, Button, Divider, HStack, Link, Modal, ModalBody, ModalCloseButton,
+    ModalContent, ModalFooter, ModalHeader, ModalOverlay, Spinner, Text, VStack,
 } from '@chakra-ui/react';
 import { authFetch, recipeDomain } from '../utils/api';
+import { printRecipe } from '../utils/printRecipe';
 
 function formatDuration(val) {
     if (!val) return null;
@@ -130,6 +131,14 @@ export default function RecipeViewModal({ recipeId, isOpen, onClose }) {
                         </VStack>
                     )}
                 </ModalBody>
+                {recipe && (
+                    <ModalFooter pt={2}>
+                        <Button size="sm" variant="outline" onClick={() => printRecipe(recipe)}>
+                            Print
+                        </Button>
+                        <Button size="sm" ml={3} onClick={onClose}>Close</Button>
+                    </ModalFooter>
+                )}
             </ModalContent>
         </Modal>
     );
