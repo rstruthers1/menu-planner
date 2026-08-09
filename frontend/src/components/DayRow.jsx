@@ -191,9 +191,9 @@ function DayRow({ date, dateStr, dayName, entry, weather, mealSuggestions, mealL
                         View recipe
                     </Link>
                 )}
-                {!entry?.cookbookName && !entry?.recipeId && (entry?.recipeLink || entry?.recipeSourceUrl) && (
-                    <Link href={entry.recipeLink || entry.recipeSourceUrl} isExternal fontSize="xs" color="blue.400" lineHeight="1.2" mt="1px" display="block">
-                        {recipeDomain(entry.recipeLink || entry.recipeSourceUrl) ?? 'Recipe'} ↗
+                {!entry?.cookbookName && (entry?.recipeSourceUrl || entry?.recipeLink) && (
+                    <Link href={entry.recipeSourceUrl || entry.recipeLink} isExternal fontSize="xs" color="blue.400" lineHeight="1.2" mt="1px" display="block">
+                        {recipeDomain(entry.recipeSourceUrl || entry.recipeLink) ?? 'Recipe'} ↗
                     </Link>
                 )}
                 {(() => {
