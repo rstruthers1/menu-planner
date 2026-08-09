@@ -44,6 +44,9 @@ public class MealSuggestionService {
 
                 Respond with ONLY a JSON object with a single entry: {"YYYY-MM-DD": "Meal Name"}
 
+                Meal library entries may include constraints in [brackets] — e.g. [method: GRILL, seasons: SUMMER, temp: 60–90°F].
+                Respect these: avoid grilling meals in cold/rainy weather, avoid summer-only meals in winter, etc.
+                Use the meal name WITHOUT the bracket constraints in your response.
                 Choose only from the provided meal library. Avoid repeating meals already planned that week.
                 """ : """
                 You are a helpful meal planning assistant. Given a list of meals the user has made before,
@@ -54,9 +57,10 @@ public class MealSuggestionService {
                 Only include days that need a suggestion — skip days that already have a meal.
                 Example: {"2026-05-26": "Tacos", "2026-05-27": "Pasta"}
 
-                Choose only from the provided meal library. Prefer meals that match the weather
-                (light meals for hot days, hearty for cold) and respect any user constraints.
-                Avoid repeating meals already planned that week.
+                Meal library entries may include constraints in [brackets] — e.g. [method: GRILL, seasons: SUMMER, temp: 60–90°F].
+                Respect these: match cook methods to weather (no grilling in rain/cold), match seasons, match temp ranges.
+                Use the meal name WITHOUT the bracket constraints in your response.
+                Choose only from the provided meal library. Avoid repeating meals already planned that week.
                 """;
 
         StringBuilder userMessage = new StringBuilder();
@@ -126,14 +130,18 @@ public class MealSuggestionService {
                 }
 
                 Rules:
-                - Choose meal names exactly as they appear in the provided meal library
-                - Provide 3-5 suggestions unless the user asks for more or fewer
+                - Meal library entries may include constraints in [brackets] such as cook method, seasons, or temp range.
+                  Respect these: don't suggest a GRILL meal when it's cold or rainy, don't suggest summer-only meals
+                  in winter, don't suggest a high-temp meal when it's cold, etc.
+                - Use the meal name WITHOUT the bracket constraints in the "name" field of your response.
+                - Choose meal names exactly as they appear in the provided meal library (minus the brackets).
+                - Provide 3-5 suggestions unless the user asks for more or fewer.
                 - Write reasons that reference real patterns: "You've had this on Mondays before",
-                  "You often have this when it's around 80°F", "A go-to for warm cloudy days", etc.
+                  "You often have this when it's around 80°F", "Good match for today's weather", etc.
                 - Day-of-week history is a soft consideration — suggest good meals from the full library,
-                  not just meals tied to that day
-                - Do NOT suggest any meal listed under "Meals from the last 2 weeks" or "Already planned this week"
-                - If the message is purely conversational with no meal request, set suggestions to []
+                  not just meals tied to that day.
+                - Do NOT suggest any meal listed under "Meals from the last 2 weeks" or "Already planned this week".
+                - If the message is purely conversational with no meal request, set suggestions to [].
                 """;
 
         StringBuilder ctx = new StringBuilder();
@@ -254,6 +262,7 @@ public class MealSuggestionService {
                 java.util.Set<String> taken = new java.util.HashSet<>(excluded);
                 suggestions.stream().map(s -> s.get("name")).forEach(taken::add);
                 List<String> eligible = mealLibrary.stream()
+                        .map(MealSuggestionService::plainName)
                         .filter(m -> !taken.contains(m))
                         .collect(java.util.stream.Collectors.toList());
                 java.util.Collections.shuffle(eligible);
@@ -267,6 +276,12 @@ public class MealSuggestionService {
         }
 
         return result;
+    }
+
+    /** Strips bracket constraint annotations from a rich meal library entry. */
+    private static String plainName(String richEntry) {
+        int bracket = richEntry.indexOf(" [");
+        return bracket >= 0 ? richEntry.substring(0, bracket) : richEntry;
     }
 
     private Map<String, Object> parseChatResponse(String raw) {

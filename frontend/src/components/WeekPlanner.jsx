@@ -17,7 +17,7 @@ import { authFetch } from '../utils/api';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-const AI_ENABLED = false;
+const AI_ENABLED = true;
 
 function getSeason(dateStr) {
     const m = new Date(dateStr + 'T00:00:00').getMonth() + 1;

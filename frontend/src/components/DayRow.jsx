@@ -29,7 +29,7 @@ function toLocalDateStr() {
 
 const SEASON_LABELS = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall', WINTER: 'Winter' };
 
-const AI_ENABLED = false;
+const AI_ENABLED = true;
 
 function getSeason(dateStr) {
     const m = new Date(dateStr + 'T00:00:00').getMonth() + 1;

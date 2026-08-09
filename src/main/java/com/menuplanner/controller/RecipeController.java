@@ -75,7 +75,8 @@ public class RecipeController {
         recipe.setSourceUrl(req.sourceUrl() != null && !req.sourceUrl().isBlank() ? req.sourceUrl().trim() : null);
         recipe.setExtendedData(req.extendedData() != null && !req.extendedData().isBlank() ? req.extendedData().trim() : null);
 
-        List<Ingredient> ingredients = new ArrayList<>();
+        // LinkedHashMap deduplicates by ingredient ID while preserving insertion order
+        Map<Long, Ingredient> seen = new LinkedHashMap<>();
         if (req.ingredients() != null) {
             for (String ingName : req.ingredients()) {
                 if (ingName == null || ingName.isBlank()) continue;
@@ -88,10 +89,10 @@ public class RecipeController {
                             newIng.setHousehold(household);
                             return ingredientRepository.save(newIng);
                         });
-                ingredients.add(ing);
+                seen.putIfAbsent(ing.getId(), ing);
             }
         }
-        recipe.setIngredients(ingredients);
+        recipe.setIngredients(new ArrayList<>(seen.values()));
 
         if (req.mealId() != null) {
             Meal meal = mealRepository.findByIdForHousehold(req.mealId(), household.getId())
