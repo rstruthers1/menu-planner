@@ -236,11 +236,11 @@ public class ShoppingListController {
                 - Meat & Seafood: raw or cooked meat, poultry, fish, seafood
                 - Dairy & Eggs: milk, cheese, butter, yogurt, cream, eggs
                 - Bread & Bakery: bread, rolls, buns, tortillas, pastries
-                - Canned & Dry Goods: canned broth, canned tomatoes, rice, pasta, nuts, dried fruit, water chestnuts, canned beans
+                - Canned & Dry Goods: canned broth, canned tomatoes, rice, pasta, nuts, dried fruit, water chestnuts, canned beans, chips, crackers, pretzels, popcorn
                 - Frozen: items sold in the freezer aisle
                 - Condiments & Sauces: soy sauce, hoisin, hot sauce, ketchup, mustard, peanut butter, salad dressing, vinaigrette, pomegranate juice (as condiment), chili sauce
                 - Spices & Seasonings: salt, pepper, dried spices, garlic powder, onion powder, ginger powder, seasoning blends, kosher salt
-                - Oils & Vinegars: cooking oils (olive oil, sesame oil, canola oil, peanut oil), vinegar (rice vinegar, white wine vinegar, balsamic)
+                - Oils & Vinegars: cooking oils (olive oil, sesame oil, canola oil, vegetable oil, peanut oil), vinegar (rice vinegar, white wine vinegar, balsamic), cooking wine (dry sherry, rice wine, mirin, sake)
                 - Baking: flour, sugar, baking powder, cornstarch, vanilla, cocoa, honey, maple syrup
                 - Beverages: drinks served as beverages
                 - Other: only for items that truly do not fit any category above
@@ -317,6 +317,14 @@ public class ShoppingListController {
             assigned.add(i);
         }
 
+        // Deterministic overrides for chronically-misclassified ingredients (see OVERRIDE_CATEGORIES)
+        for (int i = 0; i < items.size(); i++) {
+            String override = guessOverrideCategory(items.get(i).ingredient());
+            if (override == null) continue;
+            for (List<Integer> catIdx : byCategory.values()) catIdx.remove(Integer.valueOf(i));
+            byCategory.computeIfAbsent(override, k -> new ArrayList<>()).add(i);
+        }
+
         List<Map<String, Object>> categories = new ArrayList<>();
         for (var entry : byCategory.entrySet()) {
             if (entry.getValue().isEmpty()) continue;
@@ -379,6 +387,25 @@ public class ShoppingListController {
         KEYWORD_CATEGORIES = Collections.unmodifiableMap(m);
     }
 
+    // High-precision terms only (multi-word or otherwise unlikely to collide as a substring
+    // of an unrelated ingredient, e.g. "corn" inside "cornstarch"). These override Claude's
+    // placement outright, since Claude's categorization for them has proven inconsistent
+    // across regenerations. KEYWORD_CATEGORIES above is a weaker last-resort fallback and is
+    // only ever applied to ingredients Claude left completely unassigned.
+    private static final Map<String, String> OVERRIDE_CATEGORIES;
+    static {
+        Map<String, String> m = new LinkedHashMap<>();
+        for (String k : List.of("vegetable oil", "canola oil", "olive oil", "sesame oil",
+                "peanut oil", "corn oil", "vinegar", "dry sherry", "cooking wine",
+                "rice wine", "mirin", "sake")) {
+            m.put(k, "Oils & Vinegars");
+        }
+        for (String k : List.of("tortilla chips", "chips", "crackers", "pretzels", "popcorn")) {
+            m.put(k, "Canned & Dry Goods");
+        }
+        OVERRIDE_CATEGORIES = Collections.unmodifiableMap(m);
+    }
+
     private String guessCategory(String ingredient) {
         String norm = normalize(ingredient);
         // Direct match first, then check if norm contains a keyword
@@ -387,6 +414,15 @@ public class ShoppingListController {
             if (norm.contains(entry.getKey())) return entry.getValue();
         }
         return "Other";
+    }
+
+    private String guessOverrideCategory(String ingredient) {
+        String norm = normalize(ingredient);
+        if (OVERRIDE_CATEGORIES.containsKey(norm)) return OVERRIDE_CATEGORIES.get(norm);
+        for (var entry : OVERRIDE_CATEGORIES.entrySet()) {
+            if (norm.contains(entry.getKey())) return entry.getValue();
+        }
+        return null;
     }
 
     private List<Map<String, Object>> toItemList(List<IngItem> items, List<Integer> indices) {

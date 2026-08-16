@@ -83,26 +83,26 @@ export default function ShoppingListModal({ isOpen, onClose, weekStart, toDateSt
         if (!data) return;
         const lines = [];
         for (const cat of data.categories) {
-            lines.push(`[${cat.name}]`);
+            lines.push(`## ${cat.name}`);
             for (const item of cat.items) {
-                lines.push(`  ${item.ingredient} (${item.recipe})${item.pantryMatch ? ' — check pantry' : ''}`);
+                lines.push(`- [ ] ${item.ingredient} (${item.recipe})${item.pantryMatch ? ' — check pantry' : ''}`);
             }
             lines.push('');
         }
         if (data.mealsWithoutIngredients?.length > 0) {
-            lines.push('[No Ingredients]');
-            for (const name of data.mealsWithoutIngredients) lines.push(`  ${name}`);
+            lines.push('## No Ingredients');
+            for (const name of data.mealsWithoutIngredients) lines.push(`- ${name} — recipe has no ingredients yet`);
             lines.push('');
         }
         if (data.mealsWithoutRecipe?.length > 0) {
-            lines.push('[No Recipe]');
-            for (const name of data.mealsWithoutRecipe) lines.push(`  ${name}`);
+            lines.push('## No Recipe');
+            for (const name of data.mealsWithoutRecipe) lines.push(`- ${name} — no recipe linked`);
             lines.push('');
         }
         if (data.guessedMeals?.length > 0) {
-            lines.push(`* Quantities estimated from meal name: ${data.guessedMeals.join(', ')}`);
+            lines.push(`*Quantities estimated from meal name: ${data.guessedMeals.join(', ')}*`);
         }
-        navigator.clipboard.writeText(lines.join('\n'));
+        navigator.clipboard.writeText(lines.join('\n').trim());
     };
 
     return (
